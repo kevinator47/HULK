@@ -23,6 +23,12 @@ public enum TokenKind
     OpenParenthesisToken ,
     CloseParenthesisToken ,
     WhiteSpaceToken ,
+    IdToken ,
+    LetToken,
+    IfToken ,
+    InToken ,
+    ThenToken,
+    ElseToken,
     BadToken ,
     EOFToken
 }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System;
 namespace HULK ;
 
 /* Este es el sheet del lexer, el objetivo del lexer es recibir las lineas de codigo introducidas
@@ -31,6 +33,16 @@ public class Lexer
         }
     }
 
+    // Las palabras claves del HULK
+    Dictionary<string , TokenKind> KWords = new Dictionary<string , TokenKind>()
+    {
+        {"let" , TokenKind.LetToken},
+        {"if" , TokenKind.IfToken} ,
+        {"in" , TokenKind.InToken} ,
+        {"then" , TokenKind.ThenToken},
+        {"else" , TokenKind.ElseToken}    
+    };
+
     public Lexer(string codeline)
     {
         _text = codeline ;
@@ -47,16 +59,20 @@ public class Lexer
         if(char.IsDigit(Current))
         {
             int start = _position ;   // para poder recuperar mas tarde todo el token
-
-            while(char.IsDigit(Current)  )
+            bool alreadyDecimal = false ;
+            
+            while(char.IsDigit(Current) || (Current == '.' && !alreadyDecimal) )
             {
                 // sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
+                if(Current == '.')
+                    alreadyDecimal = true ;
+
                 _position ++ ;
             }
 
             int length = _position - start ;
             string text = _text.Substring(start , length ) ;
-            int.TryParse(text , out int value);
+            float.TryParse(text , out float value);
 
             return new SyntaxToken(TokenKind.NumberToken , start , text , value) ;
         }
@@ -76,6 +92,25 @@ public class Lexer
             string text = _text.Substring(start , length ) ;
 
             return new SyntaxToken(TokenKind.WhiteSpaceToken , start , text , null) ;
+        }
+
+        // Keywords && Identifiers
+        if(char.IsLetter(Current) || Current == '_')
+        {
+            int start = _position ;
+            
+            while (char.IsLetterOrDigit(Current) || Current == '_')
+            {
+                _position ++ ;
+            }
+            
+            int length = _position - start ;
+            string text = _text.Substring(start , length);
+
+            if(KWords.ContainsKey(text))
+                return new SyntaxToken(KWords[text] , start , text , null);
+            
+            return new SyntaxToken(TokenKind.IdToken , start , text , null);
         }
 
         // Operadores + - * / ( )
