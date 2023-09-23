@@ -3,16 +3,16 @@
 /* Los tokens son unidades que tienen un significado especifico para el compilador
 
 Contienen las siguientes propiedades :
-    .Kind    ---->  Representa el tipo de Token(NumberToken , EOFToken , etc) los cuales seran valores de
-                    un enum llamado TokenKind.
+    ._kind    ---->  Representa el tipo de Token(NumberToken , EOFToken , etc) los cuales seran valores de
+                    un enum llamado SyntaxKind.
     
-    .Posicion  ---------->  representa la posicion del token en la linea de codigo
+    ._position  ---------->  representa la posicion del token en la linea de codigo
 
-    .Texto(se entiende)
-    .Valor(se entiende)
+    ._text(se entiende)
+    ._value(se entiende)
 */
 
-public enum TokenKind
+public enum SyntaxKind
 {
     NumberToken ,
     PlusToken ,
@@ -30,17 +30,20 @@ public enum TokenKind
     ThenToken,
     ElseToken,
     BadToken ,
-    EOFToken
+    EOFToken ,
+    NumExpression ,
+    BinaryOperatorExpression ,
+    ParenthesisExpression 
 }
 
 public class SyntaxToken
 {
-    public TokenKind _kind ;
+    public SyntaxKind _kind ;
     public int _position ;
     public string _text  ;
     public object _value ;
 
-    public SyntaxToken(TokenKind kind , int position , string text , object value)
+    public SyntaxToken(SyntaxKind kind , int position , string text , object value)
     {
         _kind = kind ;
         _position = position ;

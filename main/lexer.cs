@@ -19,8 +19,10 @@ De momento reconocera los siguientes tokens :
 
 public class Lexer
 {
-    string _text ;
-    int _position    ;
+    string _text  ;
+    int _position ;
+    private List<string> _bugs = new List<string> ();
+    public IEnumerable<string> Bugs => _bugs ;
 
     char Current
     {
@@ -34,13 +36,13 @@ public class Lexer
     }
 
     // Las palabras claves del HULK
-    Dictionary<string , TokenKind> KWords = new Dictionary<string , TokenKind>()
+    Dictionary<string , SyntaxKind> KWords = new Dictionary<string , SyntaxKind>()
     {
-        {"let" , TokenKind.LetToken},
-        {"if" , TokenKind.IfToken} ,
-        {"in" , TokenKind.InToken} ,
-        {"then" , TokenKind.ThenToken},
-        {"else" , TokenKind.ElseToken}    
+        {"let" , SyntaxKind.LetToken},
+        {"if" , SyntaxKind.IfToken} ,
+        {"in" , SyntaxKind.InToken} ,
+        {"then" , SyntaxKind.ThenToken},
+        {"else" , SyntaxKind.ElseToken}    
     };
 
     public Lexer(string codeline)
@@ -53,7 +55,7 @@ public class Lexer
     {
         // EOF Token(sencillo)
         if(_position >= _text.Length)
-            return new SyntaxToken(TokenKind.EOFToken , _position , "\0", null) ;
+            return new SyntaxToken(SyntaxKind.EOFToken , _position , "\0", null) ;
         
         // Number Token
         if(char.IsDigit(Current))
@@ -61,20 +63,18 @@ public class Lexer
             int start = _position ;   // para poder recuperar mas tarde todo el token
             bool alreadyDecimal = false ;
             
-            while(char.IsDigit(Current) || (Current == '.' && !alreadyDecimal) )
+            while(char.IsDigit(Current) )
             {
                 // sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
-                if(Current == '.')
-                    alreadyDecimal = true ;
-
                 _position ++ ;
             }
 
             int length = _position - start ;
             string text = _text.Substring(start , length ) ;
-            float.TryParse(text , out float value);
-
-            return new SyntaxToken(TokenKind.NumberToken , start , text , value) ;
+            
+            if(!int.TryParse(text , out int value))
+                _bugs.Add("LEXICAL ERROR : no es posible representar {0} como Int.");
+            return new SyntaxToken(SyntaxKind.NumberToken , start , text , value) ;
         }
 
         // WhiteSpace Token(mismo razonamiento que NumberToken)
@@ -91,7 +91,7 @@ public class Lexer
             int length = _position - start ;
             string text = _text.Substring(start , length ) ;
 
-            return new SyntaxToken(TokenKind.WhiteSpaceToken , start , text , null) ;
+            return new SyntaxToken(SyntaxKind.WhiteSpaceToken , start , text , null) ;
         }
 
         // Keywords && Identifiers
@@ -110,24 +110,25 @@ public class Lexer
             if(KWords.ContainsKey(text))
                 return new SyntaxToken(KWords[text] , start , text , null);
             
-            return new SyntaxToken(TokenKind.IdToken , start , text , null);
+            return new SyntaxToken(SyntaxKind.IdToken , start , text , null);
         }
 
         // Operadores + - * / ( )
         if(Current == '+')
-            return new SyntaxToken(TokenKind.PlusToken , _position++ , "+" , null) ;
+            return new SyntaxToken(SyntaxKind.PlusToken , _position++ , "+" , null) ;
         if(Current == '-')
-            return new SyntaxToken(TokenKind.MinusToken , _position++ , "-", null) ;
+            return new SyntaxToken(SyntaxKind.MinusToken , _position++ , "-", null) ;
         if(Current == '*')
-            return new SyntaxToken(TokenKind.StarToken , _position++ , "*", null) ;
+            return new SyntaxToken(SyntaxKind.StarToken , _position++ , "*", null) ;
         if(Current == '/')
-            return new SyntaxToken(TokenKind.SlashToken , _position++ , "/", null) ;
+            return new SyntaxToken(SyntaxKind.SlashToken , _position++ , "/", null) ;
         if(Current == '(')
-            return new SyntaxToken(TokenKind.OpenParenthesisToken , _position++ , "(", null) ;
+            return new SyntaxToken(SyntaxKind.OpenParenthesisToken , _position++ , "(", null) ;
         if(Current == ')')
-            return new SyntaxToken(TokenKind.CloseParenthesisToken , _position++ , ")", null) ;
+            return new SyntaxToken(SyntaxKind.CloseParenthesisToken , _position++ , ")", null) ;
  
         // Token Invalido
-        return new SyntaxToken(TokenKind.BadToken , _position ++ , _text.Substring(_position - 1 , 1), null) ;
+        _bugs.Add($"<LexicalError> : unexpected character \"{Current}\"") ;
+        return new SyntaxToken(SyntaxKind.BadToken , _position ++ , _text.Substring(_position - 1 , 1), null) ;
     }
 }

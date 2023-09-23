@@ -1,4 +1,6 @@
-﻿namespace HULK ;
+﻿using System.Diagnostics;
+using System.Collections.Generic;
+namespace HULK ;
 
 /* Este es el sheet principal, donde se va a iniciar el programa, hasta que se implemente el parser voy
 a probar que el Lexer funcione corretamente en la funcion main
@@ -16,23 +18,36 @@ class Program
 
             if(string.IsNullOrWhiteSpace(line))
                 return ;
-            
-            var lexer = new Lexer(line);
-            
-            while (true)
+
+            if(line == "#clear")
             {
-                var token = lexer.GetToken();
-                
-                if(token._kind == TokenKind.EOFToken)
-                    break ;
-
-                Console.Write("{0} : \'{1}\' [{2}]" , token._kind.ToString() , token._text , token._position) ;
-                
-                if(token._value != null)
-                    Console.Write(" ({0})",token._value);
-
-                Console.WriteLine();    
+                Console.Clear();
+                continue ;
             }
+            
+            var color = Console.ForegroundColor ; // para resetear el color de las letras en la consola
+
+            var parser = new Parser(line) ;
+            var tree = parser.Parse();
+            
+
+            if(tree._bugs.Any())  // chequea si durante la compilacion se encontro algun error y los imprime
+            {
+                Console.ForegroundColor = ConsoleColor.DarkRed ;
+                foreach (string bug in tree._bugs)
+                {
+                    Console.WriteLine(bug);
+                }
+                Console.ForegroundColor = color ;
+                
+            }
+            else    // si no encontro ningun error ejecuta el programa
+            {
+                var e = new Evaluator(tree._root) ;
+                var result = e.Evaluate() ;
+                Console.WriteLine(result);
+            }
+
         }
     }
 }
