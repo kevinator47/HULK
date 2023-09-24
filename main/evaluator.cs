@@ -1,50 +1,70 @@
-﻿namespace HULK ;
+﻿using System;
+namespace HULK ;
 
 public class Evaluator
 {
-    SyntaxExpression _root ;
+    SyntaxExpression Root ;
 
     public Evaluator(SyntaxExpression root)
     {
-        _root = root ;
+        Root = root ;
     }
 
     public int Evaluate()
     {
-        return EvaluateExpression(_root);
+        return EvaluateExpression(Root);
     }
 
     private int EvaluateExpression(SyntaxExpression root)
     {
-        if(root is NumberSyntaxExpression n)
+        if(root is LiteralExpression n)
         {    
-            return (int)n.NumberToken._value ;
+            return (int)n.LiteralToken._value ;
         }
 
-        if(root is BinaryOpSyntaxExpression b)
+        if(root is UnaryOperatorExpression u)
         {
-            var left = EvaluateExpression(b._left) ;
-            var right = EvaluateExpression(b._right) ;
-
-            if(b._optoken._kind == SyntaxKind.PlusToken)
-                return left + right ;
-            if(b._optoken._kind == SyntaxKind.MinusToken)
-                return left - right ;
-            if(b._optoken._kind == SyntaxKind.StarToken)
-                return left * right ;
-            if(b._optoken._kind == SyntaxKind.SlashToken)
-                return left - right ;
-            else
+            var value = EvaluateExpression(u.Operand);
+            switch (u.OperatorToken._kind)
             {
-                throw new Exception($"<RunTimeError> : Operador Binario no valido {b._optoken}") ;
+                case(SyntaxKind.PlusSignToken):
+                    return value ;
+                case(SyntaxKind.MinusToken):
+                    return -value ;
+                default:
+                    throw new Exception($"<SEMANTIC ERROR> : Operador Unario \'{u.OperatorToken}\' no esperado.");
+            }
+        }
+
+        if(root is BinaryOperatorExpression b)
+        {
+            var left = EvaluateExpression(b.Left) ;
+            var right = EvaluateExpression(b.Right) ;
+
+            switch (b.OperatorToken._kind)
+            {
+                case(SyntaxKind.PlusSignToken):
+                    return left + right ;
+
+                case(SyntaxKind.MinusToken):
+                    return left - right ;
+
+                case(SyntaxKind.StarToken):
+                    return left * right ;
+
+                case(SyntaxKind.SlashToken):
+                    return left / right ;
+                
+                default:
+                    throw new Exception($"<SEMANTIC ERROR>: Operador Binario \'{b.OperatorToken}\' no esperado.") ;
             }
         }
 
         if(root is ParenthesizedExpression p)
         {
-            return EvaluateExpression(p._expression);
+            return EvaluateExpression(p.Expression);
         }
         
-        throw new Exception($"<RunTimeError> : Expresion no valida {root.Kind}") ;
+        throw new Exception($"<SEMANTIC ERROR> : Expresion \'{root.Kind}\' no esperada.") ;
     }
 }

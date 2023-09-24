@@ -1,4 +1,5 @@
-﻿namespace HULK ;
+﻿using System.ComponentModel;
+namespace HULK ;
 
 /* TREE'S SHEET
 Aqui se implementa el arbol de expresiones validas en hulk el cual seria
@@ -12,13 +13,13 @@ Aqui se implementa el arbol de expresiones validas en hulk el cual seria
 */
 public sealed class SyntaxTree{
 
-    public SyntaxExpression _root ;
+    public SyntaxExpression Root ;
     public SyntaxToken EOF ;
     public List<string> _bugs ;
 
     public SyntaxTree(List<string> diagnostic , SyntaxExpression root , SyntaxToken eofileToken)
     {
-        _root = root ;
+        Root = root ;
         EOF = eofileToken ;
         _bugs = diagnostic ; 
     }
@@ -31,46 +32,63 @@ public abstract class Node{
 
 public abstract class SyntaxExpression : Node{}
 
-public sealed class NumberSyntaxExpression : SyntaxExpression{
+public sealed class BinaryOperatorExpression : SyntaxExpression{
 
-    public SyntaxToken NumberToken ;
     public override SyntaxKind Kind {get;set;}
+    public SyntaxExpression Left ;
+    public SyntaxToken OperatorToken ;
+    public SyntaxExpression Right ;
 
-    public NumberSyntaxExpression(SyntaxToken numToken)
+    public BinaryOperatorExpression(SyntaxExpression left , SyntaxToken optoken , SyntaxExpression right)
     {
-        Kind = SyntaxKind.NumExpression ;
-        NumberToken = numToken ;
+        Kind = SyntaxKind.BinaryOperatorExpression ;
+        Left = left ;
+        OperatorToken = optoken ;
+        Right = right ;
     }
 }
 
-public sealed class BinaryOpSyntaxExpression : SyntaxExpression{
-
+public sealed class UnaryOperatorExpression : SyntaxExpression
+{
     public override SyntaxKind Kind {get;set;}
-    public SyntaxExpression _left ;
-    public SyntaxToken _optoken ;
-    public SyntaxExpression _right ;
+    public SyntaxToken OperatorToken ;
+    public SyntaxExpression Operand ;
 
-    public BinaryOpSyntaxExpression(SyntaxExpression left , SyntaxToken optoken , SyntaxExpression right)
+    public UnaryOperatorExpression(SyntaxToken operatorToken , SyntaxExpression operand)
     {
-        Kind = SyntaxKind.BinaryOperatorExpression ;
-        _left = left ;
-        _optoken = optoken ;
-        _right = right ;
+        Kind = SyntaxKind.UnaryOperatorExpression ;
+        OperatorToken = operatorToken ;
+        Operand = operand ;
     }
+
 }
 
 public sealed class ParenthesizedExpression : SyntaxExpression
 {
     public override SyntaxKind Kind {get;set;}
-    public SyntaxToken _OpParenthesis ;
-    public SyntaxExpression _expression ;
-    public SyntaxToken _ClsParenthesis ;
+    public SyntaxToken OpenParenthesis ;
+    public SyntaxExpression Expression ;
+    public SyntaxToken CloseParenthesis ;
 
-    public ParenthesizedExpression(SyntaxToken OpParenthesis , SyntaxExpression expression , SyntaxToken ClsParenthesis)
+    public ParenthesizedExpression(SyntaxToken openParenthesis , SyntaxExpression expression , SyntaxToken closeParenthesis)
     {
-        Kind = SyntaxKind.ParenthesisExpression ;
-        _OpParenthesis = OpParenthesis ;
-        _expression = expression ;
-        _ClsParenthesis = ClsParenthesis ;
+        Kind = SyntaxKind.ParenthesizedExpression ;
+        OpenParenthesis = openParenthesis ;
+        Expression = expression ;
+        CloseParenthesis = closeParenthesis ;
     }
 }
+
+public sealed class LiteralExpression : SyntaxExpression{
+
+    public SyntaxToken LiteralToken ;
+    public override SyntaxKind Kind {get;set;}
+
+    public LiteralExpression(SyntaxToken litToken)
+    {
+        Kind = SyntaxKind.LiteralExpression ;
+        LiteralToken = litToken ;
+    }
+}
+
+

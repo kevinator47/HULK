@@ -1,4 +1,5 @@
-﻿namespace HULK ;
+﻿using System.Linq.Expressions;
+namespace HULK ;
 
 /* PARSER'S SHEET
 
@@ -31,7 +32,7 @@ public class Parser
         return current ;
     }
 
-    private SyntaxToken Match(SyntaxKind kind)
+    private SyntaxToken MatchKind(SyntaxKind kind)
     {
         // este metodo chequea que el tipo de token sea el esperado por el programa, si falla crea un bug de tipo TypeError
         if(Current._kind == kind)
@@ -66,55 +67,91 @@ public class Parser
 
     public SyntaxTree Parse()
     {
-        var expression = ParseE();
-        var EOFtoken = Match(SyntaxKind.EOFToken); // chequea que la linea termine correctamente
+        var expression = ParseExpression();
+        var EOFtoken = MatchKind(SyntaxKind.EOFToken); // chequea que la linea termine correctamente
 
         return new SyntaxTree(_bugs , expression , EOFtoken) ;
     }
 
-    private SyntaxExpression ParseE()
+    private SyntaxExpression ParseExpression(int parentPrecedence = 0)
     {
-        // aqui esta la magia : E ---->  F + E | F - E | F
+        SyntaxExpression left ;
 
-        var left = ParseF();   // Parsea factores(es lo que hace que se ejecute primero la multiplicacion o division)
-        
-        while(Current._kind == SyntaxKind.PlusToken || Current._kind == SyntaxKind.MinusToken)
+        int unaryprecedence = GetUnaryOpPrecedence(Current._kind);
+
+        if(unaryprecedence != 0 && unaryprecedence >= parentPrecedence )
         {
-            var operatorToken = NextToken();  // guarda el operador
-            var right = ParseF() ;            // parsea el otro factor
-            left = new BinaryOpSyntaxExpression(left , operatorToken , right); // todo lo parseado se ira guardando en la expresion left
+            var operatorToken = NextToken();
+            var operand = ParseExpression(unaryprecedence);
+            left = new UnaryOperatorExpression(operatorToken , operand);
+        }
+        else
+        {
+            left = ParseTerm();
         }
 
+        while(true) // maneja la precedencia de los operadores
+        {
+            int precedence = GetBinaryOpPrecedence(Current._kind);
+            if(precedence == 0 || precedence <= parentPrecedence)
+                break ;  // si no se puede ejecutar el operador o el operador anterior tiene mayor precedencia no se hace nada(se parseara el otro primero)
+
+            // si el operador tiene mayor precedencia se parsea primero
+            var operatorToken = NextToken();
+            var right = ParseExpression(precedence);
+
+            left = new BinaryOperatorExpression(left , operatorToken , right) ;
+        }
         return left ;
     }
 
-    private SyntaxExpression ParseF()
+    private SyntaxExpression ParseTerm()
     {
-        // Sigue la magia :  F ---> *T | /T | T
-
-        var left = ParseT();   // Parsea Terminos(numeros)
-        
-        while(Current._kind == SyntaxKind.StarToken || Current._kind == SyntaxKind.SlashToken)
-        {
-            var operatorToken = NextToken();  // guarda el operador
-            var right = ParseT() ;            // parsea el otro termino
-            left = new BinaryOpSyntaxExpression(left , operatorToken , right); // todo lo parseado se ira guardando en la expresion left
-        }
-
-        return left ;
-    }
-
-    private SyntaxExpression ParseT()
-    {
+        // expresiones dentro de parentesis
         if(Current._kind == SyntaxKind.OpenParenthesisToken)
         {
             SyntaxToken open = NextToken();
-            var expression = ParseE() ;
-            SyntaxToken close = Match(SyntaxKind.CloseParenthesisToken);
+            var expression = ParseExpression() ;
+            SyntaxToken close = MatchKind(SyntaxKind.CloseParenthesisToken);
 
             return new ParenthesizedExpression(open, expression , close); 
         }
-        var numberToken = Match(SyntaxKind.NumberToken) ; // chequea que el termino sea un numero
-        return new NumberSyntaxExpression(numberToken) ;
+
+        // literales
+        var literalToken = MatchKind(SyntaxKind.LiteralToken) ; // chequea que el termino sea un numero
+        return new LiteralExpression(literalToken) ;
     }    
+    
+    private int GetBinaryOpPrecedence(SyntaxKind kind)
+    {
+        // se usa para darle una precedencia a cada operador y saber cual ejecutar primero
+        switch (kind)
+        {
+            case(SyntaxKind.StarToken):
+            case(SyntaxKind.SlashToken):
+                return 2 ;
+
+            case(SyntaxKind.PlusSignToken):
+            case(SyntaxKind.MinusToken):
+                return 1 ;
+
+            default:
+                return 0 ;
+        }
+    }
+    private int GetUnaryOpPrecedence(SyntaxKind kind)
+    {
+        // se usa para darle una precedencia a cada operador y saber cual ejecutar primero
+        switch (kind)
+        {
+            case(SyntaxKind.PlusSignToken):
+            case(SyntaxKind.MinusToken):
+                return 3 ;
+
+            default:
+                return 0 ;
+        }
+    }
 }
+
+    

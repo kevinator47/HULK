@@ -14,8 +14,9 @@ Contienen las siguientes propiedades :
 
 public enum SyntaxKind
 {
-    NumberToken ,
-    PlusToken ,
+    // Tokens
+    LiteralToken ,
+    PlusSignToken ,
     MinusToken ,
     SlashToken ,
     StarToken ,
@@ -23,7 +24,7 @@ public enum SyntaxKind
     OpenParenthesisToken ,
     CloseParenthesisToken ,
     WhiteSpaceToken ,
-    IdToken ,
+    IdentifierToken ,
     LetToken,
     IfToken ,
     InToken ,
@@ -31,9 +32,12 @@ public enum SyntaxKind
     ElseToken,
     BadToken ,
     EOFToken ,
-    NumExpression ,
+
+    // Expresiones
+    LiteralExpression ,
     BinaryOperatorExpression ,
-    ParenthesisExpression 
+    UnaryOperatorExpression ,
+    ParenthesizedExpression 
 }
 
 public class SyntaxToken

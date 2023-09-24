@@ -25,7 +25,6 @@ class Program
                 continue ;
             }
             
-            var color = Console.ForegroundColor ; // para resetear el color de las letras en la consola
 
             var parser = new Parser(line) ;
             var tree = parser.Parse();
@@ -38,12 +37,13 @@ class Program
                 {
                     Console.WriteLine(bug);
                 }
-                Console.ForegroundColor = color ;
+                
+                Console.ResetColor();
                 
             }
             else    // si no encontro ningun error ejecuta el programa
             {
-                var e = new Evaluator(tree._root) ;
+                var e = new Evaluator(tree.Root) ;
                 var result = e.Evaluate() ;
                 Console.WriteLine(result);
             }
