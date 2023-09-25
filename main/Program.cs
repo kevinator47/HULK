@@ -45,7 +45,18 @@ class Program
             {
                 var e = new Evaluator(tree.Root) ;
                 var result = e.Evaluate() ;
-                Console.WriteLine(result);
+                if(e.Bugs.Any())
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkRed ;
+                    foreach (string bug in e.Bugs)
+                    {
+                        Console.WriteLine(bug);
+                    }
+                
+                    Console.ResetColor();
+                }
+                else
+                    Console.WriteLine(result);
             }
 
         }

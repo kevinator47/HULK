@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System;
+﻿using System.ComponentModel;
 namespace HULK ;
 
 /* Este es el sheet del lexer, el objetivo del lexer es recibir las lineas de codigo introducidas
@@ -42,7 +40,9 @@ public class Lexer
         {"if" , SyntaxKind.IfToken} ,
         {"in" , SyntaxKind.InToken} ,
         {"then" , SyntaxKind.ThenToken},
-        {"else" , SyntaxKind.ElseToken}    
+        {"else" , SyntaxKind.ElseToken} , 
+        {"true" , SyntaxKind.TrueToken} ,
+        {"false" , SyntaxKind.FalseToken} 
     };
 
     public Lexer(string codeline)
@@ -72,7 +72,7 @@ public class Lexer
             string text = _text.Substring(start , length ) ;
             
             if(!int.TryParse(text , out int value))
-                _bugs.Add("LEXICAL ERROR : no es posible representar {0} como Int.");
+                _bugs.Add("<Lexical Error>: no es posible representar {0} como Int.");
             return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value) ;
         }
 
@@ -105,11 +105,12 @@ public class Lexer
             
             int length = _position - start ;
             string text = _text.Substring(start , length);
-
-            if(KWords.ContainsKey(text))
-                return new SyntaxToken(KWords[text] , start , text , null);
             
-            return new SyntaxToken(SyntaxKind.IdentifierToken , start , text , null);
+            var kind = GetKwKind(text);
+            var value = GetKwValue(kind); 
+
+            return new SyntaxToken(kind , start , text  , value);
+
         }
 
         // Operadores + - * / ( )
@@ -133,10 +134,35 @@ public class Lexer
             case(')'):
                 return new SyntaxToken(SyntaxKind.CloseParenthesisToken , _position++ , ")", null) ;
             
+            case('!'):
+                return new SyntaxToken(SyntaxKind.NotToken , _position++ , "!" , null);
+            
+            case('&'):
+                return new SyntaxToken(SyntaxKind.AndToken , _position++ , "&" , null);
+            
+            case('|'):
+                return new SyntaxToken(SyntaxKind.OrToken , _position++ , "|" , null);
+            
             default:
                 // Bad Token
                 _bugs.Add($"<LexicalError> : unexpected character \"{Current}\"") ;
                 return new SyntaxToken(SyntaxKind.BadToken , _position ++ , _text.Substring(_position - 1 , 1), null) ;
         }
+    }
+
+    private SyntaxKind GetKwKind(string text)
+    {
+        // Si el texto es una palabra clave devuelve su tipo de token, en otro caso devuelve IdentifierToken
+        if(KWords.ContainsKey(text))
+            return KWords[text];                // usar operador '?'
+        return SyntaxKind.IdentifierToken ;
+    }
+
+    private object GetKwValue(SyntaxKind Kind)
+    {
+        if(Kind == SyntaxKind.TrueToken || Kind == SyntaxKind.FalseToken)
+            return Kind == SyntaxKind.TrueToken ; // si es true devuelve true, si es false devuelve false
+        
+        return null ;
     }
 }

@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-namespace HULK ;
+﻿namespace HULK ;
 
 /* PARSER'S SHEET
 
@@ -107,19 +106,27 @@ public class Parser
 
     private SyntaxExpression ParseTerm()
     {
-        // expresiones dentro de parentesis
-        if(Current._kind == SyntaxKind.OpenParenthesisToken)
+        switch(Current._kind)
         {
-            SyntaxToken open = NextToken();
-            var expression = ParseExpression() ;
-            SyntaxToken close = MatchKind(SyntaxKind.CloseParenthesisToken);
+            // Expresiones dentro de parentesis
+            case(SyntaxKind.OpenParenthesisToken):
+                
+                var open = NextToken();
+                var expression = ParseExpression() ;
+                var close = MatchKind(SyntaxKind.CloseParenthesisToken); // chequea que se cierre el parentesis
 
-            return new ParenthesizedExpression(open, expression , close); 
+                return new ParenthesizedExpression(open, expression , close);
+
+            case(SyntaxKind.TrueToken):
+            case(SyntaxKind.FalseToken):
+
+                var booltoken = NextToken();
+                return new LiteralExpression(booltoken);
+            
+            default :
+                var numberToken = MatchKind(SyntaxKind.LiteralToken) ; // chequea que el termino sea un numero
+                return new LiteralExpression(numberToken);
         }
-
-        // literales
-        var literalToken = MatchKind(SyntaxKind.LiteralToken) ; // chequea que el termino sea un numero
-        return new LiteralExpression(literalToken) ;
     }    
     
     private int GetBinaryOpPrecedence(SyntaxKind kind)
@@ -129,6 +136,8 @@ public class Parser
         {
             case(SyntaxKind.StarToken):
             case(SyntaxKind.SlashToken):
+            case(SyntaxKind.AndToken):
+            case(SyntaxKind.OrToken):
                 return 2 ;
 
             case(SyntaxKind.PlusSignToken):
@@ -146,6 +155,7 @@ public class Parser
         {
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
+            case(SyntaxKind.NotToken):
                 return 3 ;
 
             default:

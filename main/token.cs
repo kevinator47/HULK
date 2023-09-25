@@ -14,24 +14,35 @@ Contienen las siguientes propiedades :
 
 public enum SyntaxKind
 {
-    // Tokens
-    LiteralToken ,
+    // Operadores Aritmeticos
     PlusSignToken ,
     MinusToken ,
     SlashToken ,
     StarToken ,
+
+    // Operadores Logicos
+    NotToken ,
+    AndToken ,
+    OrToken ,
+    
+    // Tokens
+    LiteralToken ,
     EqualToken , 
     OpenParenthesisToken ,
     CloseParenthesisToken ,
     WhiteSpaceToken ,
-    IdentifierToken ,
+    BadToken ,
+    EOFToken ,
+
+    // Keywords & Identifier
     LetToken,
     IfToken ,
     InToken ,
     ThenToken,
     ElseToken,
-    BadToken ,
-    EOFToken ,
+    TrueToken,
+    FalseToken ,
+    IdentifierToken ,
 
     // Expresiones
     LiteralExpression ,

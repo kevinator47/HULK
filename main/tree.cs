@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-namespace HULK ;
+﻿namespace HULK ;
 
 /* TREE'S SHEET
 Aqui se implementa el arbol de expresiones validas en hulk el cual seria
