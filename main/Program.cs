@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.Collections.Generic;
-namespace HULK ;
+﻿namespace HULK ;
 
 /* Este es el sheet principal, donde se va a iniciar el programa, hasta que se implemente el parser voy
 a probar que el Lexer funcione corretamente en la funcion main
