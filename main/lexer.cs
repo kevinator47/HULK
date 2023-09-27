@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-namespace HULK ;
+﻿namespace HULK ;
 
 /* Este es el sheet del lexer, el objetivo del lexer es recibir las lineas de codigo introducidas
 por el usuario y separarla en tokens(palabras, simbolos que tendran un significado para el compilador)
@@ -31,6 +30,17 @@ public class Lexer
 
             return _text[_position];
         }
+    }
+
+    private char Peek(int distance)
+    {
+        // Permite ver el caracter que se encuentra a cierta distancia del actual
+        int index = _position + distance ;
+        
+        if(index >= _text.Length)
+            return '\0';
+
+        return _text[index];
     }
 
     // Las palabras claves del HULK
@@ -76,7 +86,7 @@ public class Lexer
             return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value) ;
         }
 
-        // WhiteSpace Token(mismo razonamiento que LiteralToken)
+        // WhiteSpace Token(mismo razonamiento que NumberToken)
         if(char.IsWhiteSpace(Current))
         {
             int start = _position ;   // para poder recuperar mas tarde todo el token
@@ -135,13 +145,44 @@ public class Lexer
                 return new SyntaxToken(SyntaxKind.CloseParenthesisToken , _position++ , ")", null) ;
             
             case('!'):
+                if(Peek(1) == '=')
+                {
+                    return new SyntaxToken(SyntaxKind.NotEqualToken , _position += 2 , "!=" , null);    
+                }
                 return new SyntaxToken(SyntaxKind.NotToken , _position++ , "!" , null);
+                break ;
             
             case('&'):
+                if(Peek(1) == '&')
+                {
+                    return new SyntaxToken(SyntaxKind.DobleAndToken , _position += 2 , "&&" , null);    
+                }
                 return new SyntaxToken(SyntaxKind.AndToken , _position++ , "&" , null);
+                break ;
             
             case('|'):
+                if(Peek(1) == '|')
+                {
+                    return new SyntaxToken(SyntaxKind.DobleOrToken , _position += 2 , "||" , null);    
+                }
                 return new SyntaxToken(SyntaxKind.OrToken , _position++ , "|" , null);
+                break ;
+            case('='):
+
+                switch(Peek(1))
+                {
+                    case('='):
+                        return new SyntaxToken(SyntaxKind.EqualEqualToken , _position += 2 , "==" , null);
+                    
+                    case('>'):
+                        return new SyntaxToken(SyntaxKind.ArrowToken , _position += 2 , "=>" , null);
+
+                    default:
+                        return new SyntaxToken(SyntaxKind.EqualToken , _position++ , "=" , null);                    
+                        
+                }
+                
+                
             
             default:
                 // Bad Token

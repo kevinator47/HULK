@@ -138,10 +138,14 @@ public class Parser
             case(SyntaxKind.SlashToken):
             case(SyntaxKind.AndToken):
             case(SyntaxKind.OrToken):
+            case(SyntaxKind.DobleAndToken):
+            case(SyntaxKind.DobleOrToken):
                 return 2 ;
 
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
+            case(SyntaxKind.NotEqualToken):
+            case(SyntaxKind.EqualEqualToken):
                 return 1 ;
 
             default:

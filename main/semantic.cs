@@ -35,8 +35,14 @@ public static class SemanticAnalisys
             // Operadores Logicos (& , |) se ejecutan sobre valores booleanos.
             case(SyntaxKind.AndToken):
             case(SyntaxKind.OrToken):
+            case(SyntaxKind.DobleAndToken):
+            case(SyntaxKind.DobleOrToken):
                 return(left is bool && right is bool);
             // Operadores sin restricciones de tipo
+
+            case(SyntaxKind.EqualEqualToken):
+            case(SyntaxKind.NotEqualToken):
+                return(left.GetType() == right.GetType());
             default:
                 return true ; 
         }

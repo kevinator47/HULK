@@ -19,18 +19,23 @@ public enum SyntaxKind
     MinusToken ,
     SlashToken ,
     StarToken ,
+    EqualToken ,
 
     // Operadores Logicos
     NotToken ,
     AndToken ,
     OrToken ,
+    DobleAndToken ,
+    DobleOrToken ,
+    NotEqualToken ,
+    EqualEqualToken ,
     
     // Tokens
-    LiteralToken ,
-    EqualToken , 
+    LiteralToken , 
     OpenParenthesisToken ,
     CloseParenthesisToken ,
     WhiteSpaceToken ,
+    ArrowToken,
     BadToken ,
     EOFToken ,
 
