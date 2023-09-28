@@ -54,7 +54,10 @@ class Program
                     Console.ResetColor();
                 }
                 else
-                    Console.WriteLine(result);
+                {
+                    if(result != null)
+                        Console.WriteLine(result);
+                }
             }
 
         }

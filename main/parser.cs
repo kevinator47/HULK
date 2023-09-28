@@ -1,4 +1,5 @@
-﻿namespace HULK ;
+﻿using System;
+namespace HULK ;
 
 /* PARSER'S SHEET
 
@@ -41,6 +42,8 @@ public class Parser
         return new SyntaxToken(kind , Current._position , null , null);
     }
 
+    
+
     public Parser(string codeline)
     {
         // El constructor corre el lexer obteniendo un array de tokens
@@ -66,13 +69,32 @@ public class Parser
 
     public SyntaxTree Parse()
     {
-        var expression = ParseExpression();
-        var EOFtoken = MatchKind(SyntaxKind.EOFToken); // chequea que la linea termine correctamente
+        SyntaxExpression expression ;
+        
+        // function declaration
+        if(Current._kind == SyntaxKind.FunctionKwToken)
+        {
+            NextToken();
+            expression = ParseFunctionDeclaration();
+        }
+        // other expressions
+        else
+        {
+            expression = ParseExpression();
+        }
+        
+        // feo pero funciona para las comas
+        SyntaxToken EOFtoken ;
+
+        if(Current._kind == SyntaxKind.CommaSeparatorToken )
+            EOFtoken = new SyntaxToken(SyntaxKind.EOFToken , _position , "\0", null) ;  
+        else
+            EOFtoken = MatchKind(SyntaxKind.EOFToken); // chequea que la linea termine correctamente
 
         return new SyntaxTree(_bugs , expression , EOFtoken) ;
     }
 
-    private SyntaxExpression ParseExpression(int parentPrecedence = 0)
+    private SyntaxExpression ParseExpression(int parentPrecedence = 0 , DeclaratedFunctionExpression father = null)
     {
         SyntaxExpression left ;
 
@@ -81,12 +103,12 @@ public class Parser
         if(unaryprecedence != 0 && unaryprecedence >= parentPrecedence )
         {
             var operatorToken = NextToken();
-            var operand = ParseExpression(unaryprecedence);
+            var operand = ParseExpression(unaryprecedence , father);
             left = new UnaryOperatorExpression(operatorToken , operand);
         }
         else
         {
-            left = ParseTerm();
+            left = ParseTerm(father);
         }
 
         while(true) // maneja la precedencia de los operadores
@@ -97,14 +119,16 @@ public class Parser
 
             // si el operador tiene mayor precedencia se parsea primero
             var operatorToken = NextToken();
-            var right = ParseExpression(precedence);
+            var right = ParseExpression(precedence , father);
 
             left = new BinaryOperatorExpression(left , operatorToken , right) ;
         }
+        
         return left ;
     }
 
-    private SyntaxExpression ParseTerm()
+    private SyntaxExpression ParseTerm(DeclaratedFunctionExpression father)
+    // ParseTerm(father)
     {
         switch(Current._kind)
         {
@@ -117,17 +141,91 @@ public class Parser
 
                 return new ParenthesizedExpression(open, expression , close);
 
+            // literales true y false
             case(SyntaxKind.TrueToken):
             case(SyntaxKind.FalseToken):
 
                 var booltoken = NextToken();
                 return new LiteralExpression(booltoken);
             
+            // llamados de funcion y variables
+            case(SyntaxKind.IdentifierToken):
+                
+                // Function Call
+                if(Peek(1)._kind == SyntaxKind.OpenParenthesisToken) 
+                {
+                    var name = NextToken()._text ; // el nombre del identificador
+                    NextToken();   // saltando el (
+                    
+                    List<SyntaxExpression> args = new List<SyntaxExpression>();
+
+                    while(Current._kind != SyntaxKind.CloseParenthesisToken)
+                    {
+                        args.Add(ParseExpression(0,father));
+                        if(Current._kind == SyntaxKind.CloseParenthesisToken)
+                            break ;
+                        
+                        MatchKind(SyntaxKind.CommaSeparatorToken);
+                    }
+                    SyntaxExpression[] arguments = args.ToArray();
+                    NextToken(); // Saltando el )
+
+                    var declaredFunction = FunctionPool.CheckIfExist(name , arguments.Length);
+
+                    if(declaredFunction == null)
+                        _bugs.Add($"<Semantic Error> : No existe ninguna funcion \"{name}\" que reciba {arguments.Length} argumento(s).");
+                    
+                    return new FunctionCallExpression(declaredFunction , arguments);
+                }
+                
+                // Variable
+                else 
+                {
+                    var variabletoken = NextToken();
+                    var fatherExp = father ;
+
+                    SyntaxToken matchingToken = father.Scope.FirstOrDefault(token => token._text == variabletoken._text);
+                    if(matchingToken == null)
+                        _bugs.Add($"Uso de la variable sin declarar \"{variabletoken._text}\" en {father.Kind} \"{father.Name}\" ");
+
+                    return new VariableExpression(variabletoken , father);
+                }
+            
+            // literales numericos
             default :
                 var numberToken = MatchKind(SyntaxKind.LiteralToken) ; // chequea que el termino sea un numero
                 return new LiteralExpression(numberToken);
         }
-    }    
+    }
+
+    private SyntaxExpression ParseFunctionDeclaration()
+    {
+        // function Sucesor(x) => x + 1
+
+        var name = MatchKind(SyntaxKind.IdentifierToken); 
+        MatchKind(SyntaxKind.OpenParenthesisToken) ;
+
+        List<SyntaxToken> parameters = new List<SyntaxToken> ();
+        while(Current._kind != SyntaxKind.CloseParenthesisToken)
+        {
+            parameters.Add(MatchKind(SyntaxKind.IdentifierToken)) ;
+            
+            if(Current._kind == SyntaxKind.CloseParenthesisToken) // esta feo pero funciona xD
+                break ;
+            
+            MatchKind(SyntaxKind.CommaSeparatorToken) ;
+        }
+
+        NextToken();
+        MatchKind(SyntaxKind.ArrowToken);
+
+        // creo la funcion sin el body para poder pasarla como padre de las variables del body
+        var functionExp = new DeclaratedFunctionExpression(name._text , parameters); 
+
+        functionExp.Body = ParseExpression(0,functionExp); // HACERLO MAS LINDO CON UN METODO DENTRO DE LA FUNCTION EXPRESION
+        
+        return functionExp ;
+        }    
     
     private int GetBinaryOpPrecedence(SyntaxKind kind)
     {

@@ -11,6 +11,8 @@ De momento reconocera los siguientes tokens :
 . <numeros>
 . <operadores> + - * / = ( )
 . <espacios>
+. <identificadores>
+. <kwords>
 
 */
 
@@ -52,7 +54,8 @@ public class Lexer
         {"then" , SyntaxKind.ThenToken},
         {"else" , SyntaxKind.ElseToken} , 
         {"true" , SyntaxKind.TrueToken} ,
-        {"false" , SyntaxKind.FalseToken} 
+        {"false" , SyntaxKind.FalseToken} ,
+        {"function" , SyntaxKind.FunctionKwToken}
     };
 
     public Lexer(string codeline)
@@ -150,7 +153,7 @@ public class Lexer
                     return new SyntaxToken(SyntaxKind.NotEqualToken , _position += 2 , "!=" , null);    
                 }
                 return new SyntaxToken(SyntaxKind.NotToken , _position++ , "!" , null);
-                break ;
+                
             
             case('&'):
                 if(Peek(1) == '&')
@@ -158,17 +161,15 @@ public class Lexer
                     return new SyntaxToken(SyntaxKind.DobleAndToken , _position += 2 , "&&" , null);    
                 }
                 return new SyntaxToken(SyntaxKind.AndToken , _position++ , "&" , null);
-                break ;
-            
+                            
             case('|'):
                 if(Peek(1) == '|')
                 {
                     return new SyntaxToken(SyntaxKind.DobleOrToken , _position += 2 , "||" , null);    
                 }
                 return new SyntaxToken(SyntaxKind.OrToken , _position++ , "|" , null);
-                break ;
+                
             case('='):
-
                 switch(Peek(1))
                 {
                     case('='):
@@ -182,7 +183,10 @@ public class Lexer
                         
                 }
                 
-                
+            case(','):
+            {
+                return new SyntaxToken(SyntaxKind.CommaSeparatorToken , _position++ , "," , null);
+            }
             
             default:
                 // Bad Token

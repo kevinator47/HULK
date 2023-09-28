@@ -35,6 +35,7 @@ public enum SyntaxKind
     OpenParenthesisToken ,
     CloseParenthesisToken ,
     WhiteSpaceToken ,
+    CommaSeparatorToken,
     ArrowToken,
     BadToken ,
     EOFToken ,
@@ -48,12 +49,16 @@ public enum SyntaxKind
     TrueToken,
     FalseToken ,
     IdentifierToken ,
+    FunctionKwToken,
 
     // Expresiones
     LiteralExpression ,
     BinaryOperatorExpression ,
     UnaryOperatorExpression ,
-    ParenthesizedExpression 
+    ParenthesizedExpression ,
+    VariableExpression,
+    DeclaratedFunctionExpression ,
+    FunctionCallExpression
 }
 
 public class SyntaxToken

@@ -47,4 +47,9 @@ public static class SemanticAnalisys
                 return true ; 
         }
     }
+    public static bool CheckVariable(DeclaratedFunctionExpression father)
+    {
+        return (father != null);
+    }
+
 }

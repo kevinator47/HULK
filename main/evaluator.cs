@@ -102,6 +102,34 @@ public class Evaluator
         {
             return EvaluateExpression(p.Expression);
         }
+
+        if(root is VariableExpression v)
+        {
+            if(! SemanticAnalisys.CheckVariable(v.Father))
+                throw new Exception($"<RunTime Error> Variable \"{v.IdToken._text}\" declarada fuera de ambito.") ;
+            return v.GetValue();
+        }
+
+        if(root is DeclaratedFunctionExpression d)
+        {
+            if(FunctionPool.CheckIfExist(d))
+                _bugs.Add($"<RunTime Error> : Funcion \'{d.Name}\' recibiendo {d.Parameters.Length} argumentos ya existe");
+
+            FunctionPool.FunctionList.Add(d);   
+            return null;
+        }
+
+        if(root is FunctionCallExpression f)
+        {
+            List<object> values = new List<object>();
+
+            for(int i = 0 ; i < f.Args.Length ; i ++)
+            {
+                values.Add(EvaluateExpression(f.Args[i]));
+            }
+            f.ExecutableFunction.SetValues(values.ToArray());
+            return EvaluateExpression(f.ExecutableFunction.Body);
+        }
         
         throw new Exception($"<Lexical Error> : Expresion \'{root.Kind}\' no definida.") ;
     }
