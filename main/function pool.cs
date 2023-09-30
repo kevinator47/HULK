@@ -7,14 +7,14 @@
 
 public class FunctionPool
 {
-    public static List<DeclaratedFunctionExpression> FunctionList = new List<DeclaratedFunctionExpression>();
+    public static List<DeclaredFunctionExpression> FunctionList = new List<DeclaredFunctionExpression>();
 
-    public static bool CheckIfExist(DeclaratedFunctionExpression newfunction)
+    public static bool CheckIfExist(DeclaredFunctionExpression newfunction)
     {
         return FunctionList.Any(func => func.Equals(newfunction)) ;
     }
 
-    public static DeclaratedFunctionExpression CheckIfExist(string name , int counter)
+    public static DeclaredFunctionExpression CheckIfExist(string name , int counter)
     {
         return FunctionList.FirstOrDefault(func => func.Name == name && func.Parameters.Length == counter );
     }

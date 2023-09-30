@@ -1,30 +1,47 @@
-﻿namespace HULK ;
+﻿using System.ComponentModel;
+using System.Text;
+namespace HULK ;
 
-/* Este es el sheet del lexer, el objetivo del lexer es recibir las lineas de codigo introducidas
-por el usuario y separarla en tokens(palabras, simbolos que tendran un significado para el compilador)
+/* Lexer
+Es la parte del programa encargada de recibir una cadena de caracteres e identificar los distintos tokens que conforman el lenguaje de HULK
 
-Para ello, al recibir un nuevo caracter identifica el tipo de token y luego va agregando los siguientes
-hasta que este completo
+Es capaz de reconocer los siguientes Tokens :
+.NumberLiteral Token
+.StringLiteral Token (no implementado aun)
+.WhiteSpace Token
+.Identifier Token
+.Keyword Token
+.Operator Token
+.EOF Token
+.Bad Token(tokens incorrectos)
 
-De momento reconocera los siguientes tokens :
-. EOF
-. <numeros>
-. <operadores> + - * / = ( )
-. <espacios>
-. <identificadores>
-. <kwords>
+Contiene las siguientes propiedades : 
+    _text     :  para almacenar la cadena de caracteres que representa el codigo HULK.
+    _position :  para ir iterando sobre los caracteres.
+    Current   :  una propiedad que se refiere al token actual.
+    Bugs      :  una lista para almacenar los errores encontrados.
 
+Contiene los siguientes metodos :
+    Peek(n)   :  permite ver el caracter que se encuentra a una distancia "n" del actual.
+    GetToken():  donde se lleva a cabo el proceso de identificar y obtener los tokens
+
+Para identificar los tokens se intenta reconocer el tipo de token segun el primer caracter encontrado, luego se siguen mirando caracteres hasta completar
+el token en cada caso.
+
+Ejemplo : 
+
+if(a <= b then "menor" else "mayor")
+|if| |(| |a| |<=| |b| |then| |"menor"| |else| |"mayor| |)|
+
+Poner las instrucciones de completar los tokens en funciones aparte 
 */
 
 public class Lexer
 {
     string _text  ;
     int _position ;
-    private List<string> _bugs = new List<string> ();
-    public IEnumerable<string> Bugs => _bugs ;
-
-    char Current
-    {
+    char Current{
+    // devuelve el caracter actual
         get
         {
             if(_position >= _text.Length)
@@ -32,6 +49,12 @@ public class Lexer
 
             return _text[_position];
         }
+    }
+
+    public Lexer(string codeline)
+    {
+        _text = codeline ;
+        _position = 0 ; // ??
     }
 
     private char Peek(int distance)
@@ -45,28 +68,13 @@ public class Lexer
         return _text[index];
     }
 
-    // Las palabras claves del HULK
-    Dictionary<string , SyntaxKind> KWords = new Dictionary<string , SyntaxKind>()
-    {
-        {"let" , SyntaxKind.LetToken},
-        {"if" , SyntaxKind.IfToken} ,
-        {"in" , SyntaxKind.InToken} ,
-        {"then" , SyntaxKind.ThenToken},
-        {"else" , SyntaxKind.ElseToken} , 
-        {"true" , SyntaxKind.TrueToken} ,
-        {"false" , SyntaxKind.FalseToken} ,
-        {"function" , SyntaxKind.FunctionKwToken}
-    };
-
-    public Lexer(string codeline)
-    {
-        _text = codeline ;
-        _position = 0 ; // ??
-    }
-
     public SyntaxToken GetToken()
     {
-        // EOF Token(sencillo)
+        // End of Line tokens
+        if(Current == ';')
+            return new SyntaxToken(SyntaxKind.EOLToken , _position++ , ";", null);
+
+        // End Of File tokens
         if(_position >= _text.Length)
             return new SyntaxToken(SyntaxKind.EOFToken , _position , "\0", null) ;
         
@@ -75,7 +83,7 @@ public class Lexer
         {
             int start = _position ;   // para poder recuperar mas tarde todo el token
             
-            while(char.IsDigit(Current) )
+            while(char.IsDigit(Current) ) // cambiar para floats
             {
                 // sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
                 _position ++ ;
@@ -85,18 +93,53 @@ public class Lexer
             string text = _text.Substring(start , length ) ;
             
             if(!int.TryParse(text , out int value))
-                _bugs.Add("<Lexical Error>: no es posible representar {0} como Int.");
+                CompilatorTools.Bugs.Add("<Lexical Error>: no es posible representar {0} como Int.");
+                
             return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value) ;
         }
 
-        // WhiteSpace Token(mismo razonamiento que NumberToken)
+        // String Literals
+        if(Current == '"')
+        {
+            int start = _position ++ ;
+
+            var sb = new StringBuilder();
+            bool done = false ;
+
+            while(!done)
+            {
+                switch (Current)
+                {
+                    case '\0' :
+                        CompilatorTools.Bugs.Add($"<Lexical Error> : Unterminated string literal");
+                        done = true ;
+                        break ;
+                    
+                    case '"' :
+                        done = true ;
+                        _position ++ ;
+                        break ;
+                    
+                    default:
+                        sb.Append(Current) ;
+                        _position ++ ;
+                        break ;
+                }
+            }
+            
+            string value = sb.ToString();
+            string text = "\"" + value + "\"" ;
+
+            return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value);
+        }
+
+        // WhiteSpace Token
         if(char.IsWhiteSpace(Current))
         {
-            int start = _position ;   // para poder recuperar mas tarde todo el token
+            int start = _position ;   
 
             while(char.IsWhiteSpace(Current)  )
             {
-                // sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
                 _position ++ ;
             }
 
@@ -119,14 +162,14 @@ public class Lexer
             int length = _position - start ;
             string text = _text.Substring(start , length);
             
-            var kind = GetKwKind(text);
-            var value = GetKwValue(kind); 
+            var kind = CompilatorTools.GetKwKind(text);
+            var value = CompilatorTools.GetKwValue(kind); 
 
             return new SyntaxToken(kind , start , text  , value);
 
         }
 
-        // Operadores + - * / ( )
+        // Operadores
         switch (Current)
         {
             case('+'):
@@ -146,6 +189,9 @@ public class Lexer
             
             case(')'):
                 return new SyntaxToken(SyntaxKind.CloseParenthesisToken , _position++ , ")", null) ;
+
+            case(','):
+                return new SyntaxToken(SyntaxKind.CommaSeparatorToken , _position++ , "," , null);
             
             case('!'):
                 if(Peek(1) == '=')
@@ -183,31 +229,10 @@ public class Lexer
                         
                 }
                 
-            case(','):
-            {
-                return new SyntaxToken(SyntaxKind.CommaSeparatorToken , _position++ , "," , null);
-            }
-            
-            default:
-                // Bad Token
-                _bugs.Add($"<LexicalError> : unexpected character \"{Current}\"") ;
+            default:  // Tokens Incorrectos
+                CompilatorTools.Bugs.Add($"<LexicalError> : unexpected character \"{Current}\"") ;
                 return new SyntaxToken(SyntaxKind.BadToken , _position ++ , _text.Substring(_position - 1 , 1), null) ;
         }
     }
-
-    private SyntaxKind GetKwKind(string text)
-    {
-        // Si el texto es una palabra clave devuelve su tipo de token, en otro caso devuelve IdentifierToken
-        if(KWords.ContainsKey(text))
-            return KWords[text];                // usar operador '?'
-        return SyntaxKind.IdentifierToken ;
-    }
-
-    private object GetKwValue(SyntaxKind Kind)
-    {
-        if(Kind == SyntaxKind.TrueToken || Kind == SyntaxKind.FalseToken)
-            return Kind == SyntaxKind.TrueToken ; // si es true devuelve true, si es false devuelve false
-        
-        return null ;
-    }
 }
+    

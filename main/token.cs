@@ -3,15 +3,13 @@
 /* Los tokens son unidades que tienen un significado especifico para el compilador
 
 Contienen las siguientes propiedades :
-    ._kind    ---->  Representa el tipo de Token(NumberToken , EOFToken , etc) los cuales seran valores de
-                    un enum llamado SyntaxKind.
-    
-    ._position  ---------->  representa la posicion del token en la linea de codigo
-
-    ._text(se entiende)
-    ._value(se entiende)
+    ._kind      :  Representa el tipo de token
+    ._position  :  Representa la posicion del token en la linea de codigo
+    ._text      :  Representa el "nombre" del token ("x" , ">=" , "function", etc)
+    ._value     :  Representa el valor del token(util en las variables)
 */
 
+// Conjunto de Tokens y Expresiones del HULK
 public enum SyntaxKind
 {
     // Operadores Aritmeticos
@@ -38,7 +36,9 @@ public enum SyntaxKind
     CommaSeparatorToken,
     ArrowToken,
     BadToken ,
+    EOLToken ,
     EOFToken ,
+
 
     // Keywords & Identifier
     LetToken,
@@ -57,7 +57,7 @@ public enum SyntaxKind
     UnaryOperatorExpression ,
     ParenthesizedExpression ,
     VariableExpression,
-    DeclaratedFunctionExpression ,
+    DeclaredFunctionExpression ,
     FunctionCallExpression
 }
 
@@ -75,6 +75,4 @@ public class SyntaxToken
         _text = text ;
         _value = value ;
     }
-
-
 }
