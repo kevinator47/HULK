@@ -1,4 +1,5 @@
-﻿namespace HULK ;
+﻿using System.Collections.Generic;
+namespace HULK ;
 
 // Arbol Sintactico
 /* Una estructura donde cada expresion es un nodo lo que permite relacionarlas entre si 
@@ -37,7 +38,7 @@ public abstract class Node{
 }
 
 public abstract class SyntaxExpression : Node{
-    public abstract object Evaluate();
+    public abstract object Evaluate(Dictionary<string , object> symbolTable = null);
 
     public bool ErrorHasOcurred()
     {
@@ -56,7 +57,7 @@ public sealed class LiteralExpression : SyntaxExpression{
         LiteralToken = litToken ;
     }
 
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
     {
         return LiteralToken._value;
     }
@@ -74,9 +75,9 @@ public sealed class UnaryOperatorExpression : SyntaxExpression
         Operand = operand ;
     }
 
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
     {
-        var value = Operand.Evaluate();
+        var value = Operand.Evaluate(symbolTable);
         
         if(ErrorHasOcurred())
             return null ;
@@ -90,9 +91,9 @@ public sealed class UnaryOperatorExpression : SyntaxExpression
         switch (OperatorToken._kind)
             {
                 case(SyntaxKind.PlusSignToken):
-                    return (int)value ;
+                    return (double)value ;
                 case(SyntaxKind.MinusToken):
-                    return -(int)value ;
+                    return -(double)value ;
                 case(SyntaxKind.NotToken):
                     return !(bool)value ;
                 default:
@@ -108,7 +109,7 @@ public sealed class UnaryOperatorExpression : SyntaxExpression
             // Operadores Aritmeticos(- , +) se ejecutan sobre un valor numerico.
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
-                return !(value is int); 
+                return !(value is double); 
                 
             // Operador Logico (!) se ejecuta sobre un valor booleano.
             case(SyntaxKind.NotToken):
@@ -120,8 +121,6 @@ public sealed class UnaryOperatorExpression : SyntaxExpression
         }
     }
 }
-
-
 public sealed class BinaryOperatorExpression : SyntaxExpression{
 
     public override SyntaxKind Kind {get;set;}
@@ -146,7 +145,13 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
             case(SyntaxKind.MinusToken):
             case(SyntaxKind.StarToken):
             case(SyntaxKind.SlashToken):
-                return !(left is int && right is int);
+            case(SyntaxKind.ExponentToken):
+            case(SyntaxKind.MoreToken):
+            case(SyntaxKind.MoreOrEqualToken):
+            case(SyntaxKind.LessToken):
+            case(SyntaxKind.LessOrEqualToken):
+            case(SyntaxKind.PercentageToken):
+                return !(left is double && right is double);
              
             // Operadores Logicos (& , |) se ejecutan sobre valores booleanos.
             case(SyntaxKind.AndToken):
@@ -164,10 +169,10 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
         }
     }
 
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
     {
-        var left = Left.Evaluate();
-        var right = Right.Evaluate();
+        var left = Left.Evaluate(symbolTable);
+        var right = Right.Evaluate(symbolTable);
 
         if(ErrorHasOcurred())
             return null ;
@@ -181,16 +186,25 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
         switch (OperatorToken._kind)
         {
             case(SyntaxKind.PlusSignToken):
-                return (int)left + (int)right ;
+                return (double)left + (double)right ;
 
             case(SyntaxKind.MinusToken):
-                return (int)left - (int)right ;
+                return (double)left - (double)right ;
 
             case(SyntaxKind.StarToken):
-                return (int)left * (int)right ;
+                return (double)left * (double)right ;
                 
             case(SyntaxKind.SlashToken):
-                return (int)left / (int)right ;
+                return (double)left / (double)right ;
+            
+            case(SyntaxKind.ExponentToken):
+                return Math.Pow((double) left , (double) right)  ;
+            
+            case(SyntaxKind.PercentageToken):
+                return (double)left % (double)right ;
+            
+            case(SyntaxKind.ArrobaToken):
+                return left.ToString() + right.ToString();
                 
             case(SyntaxKind.DobleAndToken):
                 return (bool)left && (bool)right ;
@@ -205,7 +219,19 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
                 return (bool)left | (bool) right;
                 
             case(SyntaxKind.EqualEqualToken):
-                return left.Equals(right);  
+                return left.Equals(right);
+
+            case(SyntaxKind.MoreToken):
+                return (double)left > (double)right ;
+           
+            case(SyntaxKind.MoreOrEqualToken):
+                return (double)left >= (double)right ;
+           
+            case(SyntaxKind.LessToken):
+                return (double)left < (double)right ;
+           
+            case(SyntaxKind.LessOrEqualToken):
+                return (double)left <= (double)right ;  
 
             case(SyntaxKind.NotEqualToken):
                 return !(left.Equals(right));
@@ -215,9 +241,6 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
         }
     }
 }
-
-
-
 public sealed class ParenthesizedExpression : SyntaxExpression
 {
     public override SyntaxKind Kind {get;set;}
@@ -232,122 +255,228 @@ public sealed class ParenthesizedExpression : SyntaxExpression
         Expression = expression ;
         CloseParenthesis = closeParenthesis ;
     }
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
     {
-        return Expression.Evaluate();
+        return Expression.Evaluate(symbolTable);
     }
 }
 
 public sealed class VariableExpression : SyntaxExpression{
-    public SyntaxToken IdToken ;
-    public DeclaredFunctionExpression Father ; // crear un tipo de expresion llamado ScopedExpression
     public override SyntaxKind Kind {get;set;}
+    public string Name ; 
+    
 
-    public VariableExpression(SyntaxToken idtoken , DeclaredFunctionExpression father)
+    public VariableExpression(string name)
     {
-        IdToken = idtoken ;
-        Father = father ;
         Kind = SyntaxKind.VariableExpression ;
+        Name = name ;
     }
 
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string, object> symbolTable)
     {
-        // busca en el Scope del padre el token que tenga el mismo nombre  
-        SyntaxToken matchingToken = Father.Scope.FirstOrDefault(token => token._text == IdToken._text);
+        // Chequeando si existe la variable en el scope actual
+        if(symbolTable.ContainsKey(Name))
+            return symbolTable[Name];
         
-        if(matchingToken != null)
-        {
-            return matchingToken._value ;  // si lo encuentra devuelve el valor
-        }
-        else
-        {
-            // si no lo encuentra no esta definida en el ambito
-            CompilatorTools.Bugs.Add($"<Semantic Error> : Variable \"{IdToken._text}\" not defined in {Father.Kind} {Father.Name}");
-            return null ;
-
-        }
+        CompilatorTools.Bugs.Add($"<RuntimeError> : Variable {Name} does not exist in current context.");
+        return null ;
     }
 }
 
-public abstract class ScopedExpression : SyntaxExpression{}
+public sealed class IfExpression : SyntaxExpression{
+    public override SyntaxKind Kind {get;set;}
+    SyntaxExpression Condition ;
+    SyntaxExpression TrueBranch ;
+    SyntaxExpression FalseBranch ;
+
+    public IfExpression(SyntaxExpression condition , SyntaxExpression truebranch , SyntaxExpression falsebranch)
+    {
+        Condition = condition ;
+        TrueBranch = truebranch ;
+        FalseBranch = falsebranch ;
+    }
+    private bool SemanticErrors(Dictionary<string , object> symbolTable)
+    {
+        return !(Condition.Evaluate(symbolTable) is bool) ;
+    }
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
+    {
+        if(SemanticErrors(symbolTable))
+        {
+            CompilatorTools.Bugs.Add("<Semantic Error> : if condition must be a boolean expresion.");
+            return null ;
+        }
+        if((bool)Condition.Evaluate(symbolTable))
+        {
+            return TrueBranch.Evaluate(symbolTable) ;
+        }
+        return FalseBranch.Evaluate(symbolTable) ;
+    } 
+
+}
+public abstract class ScopedExpression : SyntaxExpression{
+    public string Name ;
+    public List<string> Args ;
+    public SyntaxExpression Body ;
+
+    public int Len ;
+
+    public abstract object Execute(List<object> parameters , Dictionary<string , object> symbolTable = null);
+
+    }
+    
+
 public sealed class DeclaredFunctionExpression: ScopedExpression{
 
     public override SyntaxKind Kind {get;set;}
-    public string Name ;
-    public SyntaxExpression Body ;
 
-    public SyntaxToken[] Parameters ;
-    public List<SyntaxToken> Scope ;
-
-    public DeclaredFunctionExpression(string name , List<SyntaxToken> parameters )
+    public DeclaredFunctionExpression(string name , List<string> args , SyntaxExpression body ) 
     {
         Kind = SyntaxKind.DeclaredFunctionExpression ;
         Name = name ;
-        Parameters = parameters.ToArray();
-        Scope = new List<SyntaxToken>(parameters);   
-    }
-    public void DeclarateBody(SyntaxExpression body)
-    {
-        // El body se setea por separado para poder pasar la funcion como padre de las variables en él.
-        Body = body ;
+        Args = args ;
+        Body = body ;   
+        Len = Args.Count;
     }
 
     public override bool Equals(object obj)
     {
         // Dos funciones son iguales si tienen el mismo nombre y misma cantidad de parametros
-        if(obj == null || GetType() != obj.GetType())
+        if(obj == null)
+        {
             return false ;
-        
-        var other = (DeclaredFunctionExpression)obj ;
+        }
+        var other = (ScopedExpression)obj ;
 
-        return (Name == other.Name && Parameters.Length == other.Parameters.Length) ;
+        return (Name == other.Name && Len == other.Len) ;
     }
 
     // Hash code para que no me salga la advertencia
-    public void SetValues(object[] values)
-    {
-        // Al recibir un llamado setea los valores en el scope.
-        for(int i = 0 ; i < values.Length ; i ++)
-        {
-            Scope.ElementAt(i)._value = values[i];
-        }
-    }
-    public override object Evaluate()
+    public override object Evaluate(Dictionary<string , object> symbolTable = null)
     {
         if(FunctionPool.CheckIfExist(this))
-                CompilatorTools.Bugs.Add($"<Semantic Error> : Function \'{Name}\' receiving {Parameters.Length} argument(s) already exist.");
+            CompilatorTools.Bugs.Add($"<Semantic Error> : Function \'{Name}\' receiving {Args.Count} argument(s) already exist.");
 
         FunctionPool.FunctionList.Add(this); 
-        Console.WriteLine("Function added to list");  
         return null;
     }
 
-    public object EvaluateBody()
+    public override object Execute(List<object> parameters , Dictionary<string , object> symbolTable = null)
     {
-        return Body.Evaluate();
+        
+        // Crear una nueva symbolTable para la llamada actual
+        var localSymbolTable = new Dictionary<string , object>(symbolTable);
+
+        // Setear los valores de los parametros a las variables correspondientes
+        for(int i = 0 ; i < Args.Count ; i++)
+        {
+            localSymbolTable[Args[i]] = parameters[i];
+        }
+
+        return Body.Evaluate(localSymbolTable);
+    }
+}
+
+public sealed class PredefinedFunctionExpreesion : ScopedExpression{
+    public override SyntaxKind Kind {get;set;}
+    
+
+    public PredefinedFunctionExpreesion(string name , int len)
+    {
+        Name = name ;
+        Len = len ;
+    }
+
+    public override object Evaluate(Dictionary<string, object> symbolTable = null)
+    {
+        return null ;
+    }
+
+    public override object Execute(List<object> ArgValues , Dictionary <string , object> symbolTable = null)
+    {        
+        // chequeo semantico
+        
+        switch(Name)
+        {
+        case("sin"):
+            return Math.Sin((double) ArgValues.ElementAt(0));
+        case("cos"):
+            return Math.Cos((double) ArgValues.ElementAt(0)) ;            
+        case("tan"):
+            return Math.Tan((double) ArgValues.ElementAt(0)) ;
+        case("print"):
+            return ArgValues.ElementAt(0) ;
+        default:
+            return null ;
+        }
+    }
+}
+public sealed class LetInExpression : SyntaxExpression{
+    public override SyntaxKind Kind {get;set;}
+    public Dictionary<string , SyntaxExpression> Assigment ;
+    public SyntaxExpression Body ;
+
+    public LetInExpression(Dictionary<string , SyntaxExpression> assigment , SyntaxExpression body)
+    {
+        Kind = SyntaxKind.LetInExpression ;
+        Body = body ;
+        Assigment = assigment ;
+    }    
+    public override object Evaluate(Dictionary<string,object> symbolTable = null)
+    {
+        if(symbolTable == null)
+            symbolTable = new Dictionary<string, object>();
+
+        Dictionary<string, object> localSymbolTable = new Dictionary<string, object>();
+
+        foreach (var item in symbolTable.Keys)
+        {
+           localSymbolTable[item] = symbolTable[item]; 
+        }
+
+        foreach (var variable in Assigment.Keys)
+        {
+            localSymbolTable[variable] = Assigment[variable].Evaluate(symbolTable);
+        }
+                
+        return Body.Evaluate(localSymbolTable);
     }
 }
 public sealed class FunctionCallExpression : SyntaxExpression{
     public override SyntaxKind Kind {get;set;}
-    public DeclaredFunctionExpression ExecutableFunction ;
-    public SyntaxExpression[] Args ;
+    public string Name ;
+    public List<SyntaxExpression> Args ;
 
-    public FunctionCallExpression(DeclaredFunctionExpression executableFunction , SyntaxExpression[] args)
+    public FunctionCallExpression(string name , List<SyntaxExpression> args)
     {
         Kind = SyntaxKind.FunctionCallExpression ;
-        ExecutableFunction = executableFunction ;
+        Name = name ;
         Args = args ;
     }
-    public override object Evaluate()
+    public override object Evaluate(Dictionary <string , object> symbolTable = null)
     {
-        List<object> values = new List<object>() ;
-
-        for(int i = 0 ; i < Args.Length ; i ++)
+        // obteniendo los valores de los parametros de la llamada
+        var argValues = new List<object>();
+        
+        foreach(var argument in Args)
         {
-            values.Add(Args[i].Evaluate());
+            argValues.Add(argument.Evaluate(symbolTable));
         }
-        ExecutableFunction.SetValues(values.ToArray());
-        return ExecutableFunction.EvaluateBody();
+
+        // buscando la funcion 
+        var function = FunctionPool.Find(Name , Args.Count);
+
+        if(function == null)
+        {
+            CompilatorTools.Bugs.Add($"<RuntimeError> : Function {Name} receiving {Args.Count} parameter(s) does not exist.");
+            return null ;
+        }
+
+        if(symbolTable == null)
+            symbolTable = new Dictionary<string , object>();
+
+        return function.Execute(argValues , symbolTable);
+
     }
 }
 

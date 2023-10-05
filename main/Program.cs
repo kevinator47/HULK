@@ -9,12 +9,15 @@ Si no hay ningun error capturable durante el tiempo de ejecucion(hay algunos que
 Estos pasos se repiten hasta que el usuario ingrese una linea vacia
 
 Tiene colorcitos(verde para el programa normalmente y rojo para mostrar los errores)
+
+Ideas : Cambiar campo Value de VariableExpression a una expresion y para obtener el valor solo hay que evaluar dicha expresion.
 */
 
 class Program
 {
     static void Main()
     {
+        FunctionPool.LoadPredefinedFunctions();
         while (true)
         {
             Console.ForegroundColor = ConsoleColor.Green ;

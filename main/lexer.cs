@@ -82,18 +82,22 @@ public class Lexer
         if(char.IsDigit(Current))
         {
             int start = _position ;   // para poder recuperar mas tarde todo el token
+
+            bool IsDecimal = false ; 
             
-            while(char.IsDigit(Current) ) // cambiar para floats
+            // Sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
+            while(char.IsDigit(Current) || (Current == '.' && ! IsDecimal) )
             {
-                // sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
+                if(Current == '.')
+                    IsDecimal = true ;
                 _position ++ ;
             }
 
             int length = _position - start ;
             string text = _text.Substring(start , length ) ;
             
-            if(!int.TryParse(text , out int value))
-                CompilatorTools.Bugs.Add("<Lexical Error>: no es posible representar {0} como Int.");
+            if(!double.TryParse(text , out double value))
+                CompilatorTools.Bugs.Add($"<Lexical Error>: {text} cannot be represented by type Number.");
                 
             return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value) ;
         }
@@ -183,6 +187,16 @@ public class Lexer
             
             case('/'):
                 return new SyntaxToken(SyntaxKind.SlashToken , _position++ , "/", null) ;
+            
+            case('^') :
+                return new SyntaxToken(SyntaxKind.ExponentToken, _position++ , "^", null);
+            
+            case('%'):
+                return new SyntaxToken(SyntaxKind.PercentageToken , _position++ , "%" , null);
+
+            case('@'):
+               return new SyntaxToken(SyntaxKind.ArrobaToken , _position++ , "%" , null);
+
 
             case('('):
                 return new SyntaxToken(SyntaxKind.OpenParenthesisToken , _position++ , "(", null) ;
@@ -227,6 +241,26 @@ public class Lexer
                     default:
                         return new SyntaxToken(SyntaxKind.EqualToken , _position++ , "=" , null);                    
                         
+                }
+            
+            case('<') :
+                switch (Peek(1))
+                {
+                    case('='):
+                    return new SyntaxToken(SyntaxKind.LessOrEqualToken , _position += 2 , "<=" , null);
+                
+                    default:
+                        return new SyntaxToken(SyntaxKind.LessToken , _position++ , "<" , null);
+                }
+            
+            case('>') :
+                switch (Peek(1))
+                {
+                    case('='):
+                        return new SyntaxToken(SyntaxKind.MoreOrEqualToken , _position += 2 , ">=" , null);
+                
+                    default:
+                        return new SyntaxToken(SyntaxKind.MoreToken , _position++ , ">" , null);
                 }
                 
             default:  // Tokens Incorrectos

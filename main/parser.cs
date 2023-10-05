@@ -1,4 +1,5 @@
-﻿namespace HULK ;
+﻿using System.Collections.Generic;
+namespace HULK ;
 
 /* Parser
 Es la parte del programa encargada de recibir un grupo de tokens creada por el Lexer y convertirlas en expresiones.
@@ -89,7 +90,6 @@ public class Parser
     {
         // para guardar todas las instrucciones en caso de que escriban varias lineas de codigo en una sola
         List <SyntaxExpression> Roots = new List<SyntaxExpression>();
-
         SyntaxExpression expression ;
         
         while(Current._kind != SyntaxKind.EOFToken)
@@ -110,7 +110,7 @@ public class Parser
             SyntaxToken EndToken ;
 
             // Al parsear expresiones dentro de los parentesis de una funcion el final serian las , entre los parametros
-            if(Current._kind == SyntaxKind.CommaSeparatorToken )
+            if(Current._kind == SyntaxKind.CommaSeparatorToken || Current._kind == SyntaxKind.InKwToken  )
             {
                 EndToken = new SyntaxToken(SyntaxKind.EOFToken , _position , "\0", null) ;
             }
@@ -124,7 +124,7 @@ public class Parser
         return new SyntaxTree(CompilatorTools.Bugs , Roots.ToArray() , MatchKind(SyntaxKind.EOFToken)) ;
     }
 
-    private SyntaxExpression ParseExpression(int parentPrecedence = 0 , DeclaredFunctionExpression father = null)
+    private SyntaxExpression ParseExpression(int parentPrecedence = 0)
     {
         SyntaxExpression left ;
         int unaryprecedence = CompilatorTools.GetUnaryOpPrecedence(Current._kind) ;
@@ -132,12 +132,12 @@ public class Parser
         if(unaryprecedence != 0 && unaryprecedence >= parentPrecedence )
         {
             var operatorToken = NextToken() ;
-            var operand = ParseExpression(unaryprecedence , father) ;
+            var operand = ParseExpression(unaryprecedence) ;
             left = new UnaryOperatorExpression(operatorToken , operand) ;
         }
         else
         {
-            left = ParseTerm(father);
+            left = ParseTerm();
         }
 
         while(true) 
@@ -152,121 +152,163 @@ public class Parser
 
             // Si el operador tiene mayor precedencia se parsea primero.
             var operatorToken = NextToken();
-            var right = ParseExpression(precedence , father);
+            var right = ParseExpression(precedence);
             left = new BinaryOperatorExpression(left , operatorToken , right) ;
         }
         return left ;
     }
 
-    private SyntaxExpression ParseTerm(DeclaredFunctionExpression father)
+    private SyntaxExpression ParseTerm()
     {
         switch(Current._kind)
         {
-            // (E)
+            // Expresiones entre parentesis
             case(SyntaxKind.OpenParenthesisToken):
-                var open = NextToken() ;
-                var expression = ParseExpression() ;
-                var close = MatchKind(SyntaxKind.CloseParenthesisToken) ; // chequea que se cierre el parentesis
-
-                return new ParenthesizedExpression(open, expression , close);
-
-            // bool
+                return ParseParenthesizedExpression();
+                
+            // Bool Literal
             case(SyntaxKind.TrueToken):
             case(SyntaxKind.FalseToken):
+                return ParseBoolLiteralExpression();
 
-                var booltoken = NextToken();
-                return new LiteralExpression(booltoken);
-            
-            // F(E) y variable
+            // Funcion Call y variables
             case(SyntaxKind.IdentifierToken):
-
-                // F(E)
-                if(Peek(1)._kind == SyntaxKind.OpenParenthesisToken) 
-                {
-                    var name = NextToken()._text ;  
-                    NextToken();   // saltando el (
-                    
-                    // lista de argumentos de la funcion
-                    List<SyntaxExpression> args = new List<SyntaxExpression>() ;
-
-                    while(Current._kind != SyntaxKind.CloseParenthesisToken)
-                    {
-                        args.Add(ParseExpression(0,father));
-                        
-                        // Si se llega al final de la linea no se cerro el parentesis
-                        if(Current._kind == SyntaxKind.EOFToken)
-                        {
-                            CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function call : {name}(...") ;
-                            break ;
-                        }
-                        
-                        if(Current._kind != SyntaxKind.CloseParenthesisToken)
-                        {   
-                            // chequea que a cada argumento le siga una coma excepto el ultimo       
-                            MatchKind(SyntaxKind.CommaSeparatorToken);
-                        }                 
-                    }
-
-                    SyntaxExpression[] arguments = args.ToArray();
-                    NextToken(); // Saltando el ) 
-
-                    var declaredFunction = FunctionPool.CheckIfExist(name , arguments.Length);
-
-                    if(declaredFunction == null)
-                        CompilatorTools.Bugs.Add($"<Syntactic Error> : Function \"{name}\" receiving {arguments.Length} argument(s) do(es) not exist.");
-                    
-                    return new FunctionCallExpression(declaredFunction , arguments);
-                }
-                
-                // Variable
+                if(Peek(1)._kind == SyntaxKind.OpenParenthesisToken)  
+                    return ParseFunctionCallExpression();
                 else 
-                { 
-
-                    var variabletoken = NextToken();
-                    var fatherExp = father ;
-
-                    if(father == null)
-                    {
-                        CompilatorTools.Bugs.Add($"<Syntactic Error> : Variable \"{variabletoken._text}\" declared outside valid scope.");
-                    }
-                    
-                    else
-                    {
-                        SyntaxToken matchingToken = father.Scope.FirstOrDefault(token => token._text == variabletoken._text);
-                        
-                        if(matchingToken == null)
-                            CompilatorTools.Bugs.Add($"<Syntactic Error> : Use of undeclared variable \"{variabletoken._text}\" at {father.Kind} \"{father.Name}\" ");
-                    }
-                    
-                    return new VariableExpression(variabletoken , father);
-                }
+                    return ParseVariableExpression();
+                
+            // Let In Expressions
+            case(SyntaxKind.LetKwToken):
+                return ParseLetInExpression();
             
+            // If Expresions
+            case(SyntaxKind.IfKwToken):
+                return ParseIfExpression();
+                
             // literales numericos
             default :
-                var numberToken = MatchKind(SyntaxKind.LiteralToken) ; // chequea que el termino sea un numero
-                return new LiteralExpression(numberToken);
+                return ParseNumLiteralExpression();
         }
     }
 
+    private SyntaxExpression ParseParenthesizedExpression()
+    {
+        var open = NextToken() ;                                     
+        var expression = ParseExpression(0) ;            
+        var close = MatchKind(SyntaxKind.CloseParenthesisToken) ; 
+
+        return new ParenthesizedExpression(open, expression , close);
+    }
+
+    private SyntaxExpression ParseBoolLiteralExpression()
+    {
+        var booltoken = NextToken();
+        return new LiteralExpression(booltoken);
+    }
+
+    private SyntaxExpression ParseFunctionCallExpression()
+    {
+        var name = NextToken()._text ;   // Nombre de la funcion
+        NextToken();                     // Saltando el '('
+                                
+        List<SyntaxExpression> args = new List<SyntaxExpression>() ;
+
+        while(Current._kind != SyntaxKind.CloseParenthesisToken)
+        {
+            args.Add(ParseExpression()) ;
+                        
+            if(Current._kind == SyntaxKind.EOFToken)
+            {
+                // Si se llega al final del archivo no se cerro el parentesis.
+                CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function call : {name}(...") ;
+                break ;
+            }
+                        
+            if(Current._kind != SyntaxKind.CloseParenthesisToken)
+            {   
+                // chequea que a cada argumento le siga una coma excepto el ultimo       
+                MatchKind(SyntaxKind.CommaSeparatorToken);
+            }                 
+        }
+        NextToken() ;  // Saltando el ) 
+                     
+        return new FunctionCallExpression(name , args);
+    }
+    private SyntaxExpression ParseVariableExpression()
+    {
+        string name = NextToken()._text ;
+        return new VariableExpression(name);
+    }
+    private SyntaxExpression ParseLetInExpression()
+    {
+            Dictionary<string , SyntaxExpression> asigments = new Dictionary<string, SyntaxExpression>() ;
+            
+            NextToken() ; // saltando el Let
+            
+            while(Current._kind != SyntaxKind.InKwToken)
+            {
+                string varName = MatchKind(SyntaxKind.IdentifierToken)._text ;
+                MatchKind(SyntaxKind.EqualToken);
+                var expression = ParseExpression();
+                asigments.Add(varName,expression) ;
+                
+                if(Current._kind == SyntaxKind.InKwToken)
+                    break ;
+                if(Current._kind == SyntaxKind.EOFToken)
+                {
+                    CompilatorTools.Bugs.Add($"<Syntax Error> : Missing closing parenthesis at Let-In expression.");
+                    return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
+                }
+                MatchKind(SyntaxKind.CommaSeparatorToken);
+            }
+            NextToken() ; // saltando el 'in'
+            var body = ParseExpression();
+
+            return new LetInExpression(asigments , body);
+        
+                
+    }
+    private SyntaxExpression ParseIfExpression()
+    {
+        NextToken(); // saltando el if
+        MatchKind(SyntaxKind.OpenParenthesisToken);
+    
+        SyntaxExpression condition = ParseExpression();
+        
+        NextToken();
+        SyntaxExpression truebranch = ParseExpression();
+        MatchKind(SyntaxKind.ElseKwToken);
+        SyntaxExpression falsebranch = ParseExpression();
+
+        return new IfExpression(condition , truebranch , falsebranch);
+
+    }
+    private SyntaxExpression ParseNumLiteralExpression()
+    {
+        var numberToken = MatchKind(SyntaxKind.LiteralToken) ;
+        return new LiteralExpression(numberToken);
+    }
     private SyntaxExpression ParseFunctionDeclaration()
     {
         // function Sucesor(x) => x + 1
 
-        var name = MatchKind(SyntaxKind.IdentifierToken); 
+        string name = MatchKind(SyntaxKind.IdentifierToken)._text ; 
         MatchKind(SyntaxKind.OpenParenthesisToken) ;
 
-        List<SyntaxToken> parameters = new List<SyntaxToken> ();
+        List<string> parameters = new List<string>() ;
+        
         while(Current._kind != SyntaxKind.CloseParenthesisToken)
         {
-            parameters.Add(MatchKind(SyntaxKind.IdentifierToken)) ;
+            string varName = MatchKind(SyntaxKind.IdentifierToken)._text ; 
+            parameters.Add(varName) ;
             
-            if(Current._kind != SyntaxKind.CloseParenthesisToken) // chequea que los parametros esten separados por comas excepto el ultimo
+            if(Current._kind != SyntaxKind.CloseParenthesisToken) // chequea que los parametros esten separados por comas excepto el ultimo.
             {
                 MatchKind(SyntaxKind.CommaSeparatorToken) ;
             }
             
-            // Si se llega al final de la linea no se cerro el parentesis
-            if(Current._kind == SyntaxKind.EOFToken)
+            if(Current._kind == SyntaxKind.EOFToken) // Si se llega al final del archivo no se cerro el parentesis.
             {
                 CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function declaration : {name}(...") ;
                 break ;
@@ -276,15 +318,11 @@ public class Parser
         NextToken();
         MatchKind(SyntaxKind.ArrowToken);
 
-        // creo la funcion sin el body para poder pasarla como padre de las variables del body
-        var functionExp = new DeclaredFunctionExpression(name._text , parameters); 
-
-        // declara el cuerpo de la funcion pasandola a ella como padre de las variables.
-        functionExp.DeclarateBody( ParseExpression(0,functionExp) ) ; 
-        
-        return functionExp ;
+        var body = ParseExpression();
+        return new DeclaredFunctionExpression(name , parameters , body) ;
     }    
-    
+
+
 }
 
     

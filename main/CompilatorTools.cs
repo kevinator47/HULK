@@ -1,15 +1,16 @@
 ﻿namespace HULK ;
 
+
 public class CompilatorTools
 {
     // Las palabras claves del HULK
     private static Dictionary<string , SyntaxKind> KWords = new Dictionary<string , SyntaxKind>()
     {
-        {"let" , SyntaxKind.LetToken},
-        {"if" , SyntaxKind.IfToken} ,
-        {"in" , SyntaxKind.InToken} ,
-        {"then" , SyntaxKind.ThenToken},
-        {"else" , SyntaxKind.ElseToken} , 
+        {"let" , SyntaxKind.LetKwToken},
+        {"if" , SyntaxKind.IfKwToken} ,
+        {"in" , SyntaxKind.InKwToken} ,
+        {"then" , SyntaxKind.ThenKwToken},
+        {"else" , SyntaxKind.ElseKwToken} , 
         {"true" , SyntaxKind.TrueToken} ,
         {"false" , SyntaxKind.FalseToken} ,
         {"function" , SyntaxKind.FunctionKwToken}
@@ -25,9 +26,7 @@ public class CompilatorTools
         {
             return KWords[text];             // usar operador '?'        
         }
-
         return SyntaxKind.IdentifierToken ;
-        
     }
 
     public static object GetKwValue(SyntaxKind Kind)
@@ -42,18 +41,28 @@ public class CompilatorTools
         // Se usa para darle una precedencia a cada operador, mientras mayor sea, primero se ejecutaran.
         switch (kind)
         {
+            case(SyntaxKind.ExponentToken):
+            case(SyntaxKind.NotEqualToken):
+            case(SyntaxKind.EqualEqualToken):
+            case(SyntaxKind.MoreOrEqualToken):
+            case(SyntaxKind.LessOrEqualToken):
+            case(SyntaxKind.LessToken):
+            case(SyntaxKind.MoreToken):
+            
+                return 3 ;
+
             case(SyntaxKind.StarToken):
             case(SyntaxKind.SlashToken):
             case(SyntaxKind.AndToken):
             case(SyntaxKind.OrToken):
             case(SyntaxKind.DobleAndToken):
             case(SyntaxKind.DobleOrToken):
-            case(SyntaxKind.NotEqualToken):
-            case(SyntaxKind.EqualEqualToken):
+            case(SyntaxKind.PercentageToken):
                 return 2 ;
 
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
+            case(SyntaxKind.ArrobaToken):
             
                 return 1 ;
 
@@ -69,7 +78,7 @@ public class CompilatorTools
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
             case(SyntaxKind.NotToken):
-                return 3 ;
+                return 4 ;
 
             default:
                 return 0 ;

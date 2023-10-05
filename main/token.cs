@@ -17,7 +17,10 @@ public enum SyntaxKind
     MinusToken ,
     SlashToken ,
     StarToken ,
+    ExponentToken ,
+    PercentageToken ,
     EqualToken ,
+    ArrobaToken ,
 
     // Operadores Logicos
     NotToken ,
@@ -27,6 +30,10 @@ public enum SyntaxKind
     DobleOrToken ,
     NotEqualToken ,
     EqualEqualToken ,
+    MoreToken,
+    LessToken ,
+    MoreOrEqualToken ,
+    LessOrEqualToken ,
     
     // Tokens
     LiteralToken , 
@@ -41,11 +48,11 @@ public enum SyntaxKind
 
 
     // Keywords & Identifier
-    LetToken,
-    IfToken ,
-    InToken ,
-    ThenToken,
-    ElseToken,
+    LetKwToken,
+    IfKwToken ,
+    InKwToken ,
+    ThenKwToken,
+    ElseKwToken,
     TrueToken,
     FalseToken ,
     IdentifierToken ,
@@ -58,7 +65,8 @@ public enum SyntaxKind
     ParenthesizedExpression ,
     VariableExpression,
     DeclaredFunctionExpression ,
-    FunctionCallExpression
+    FunctionCallExpression ,
+    LetInExpression
 }
 
 public class SyntaxToken
