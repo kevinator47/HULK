@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-namespace HULK ;
+﻿namespace HULK ;
 
 /* Parser
 Es la parte del programa encargada de recibir un grupo de tokens creada por el Lexer y convertirlas en expresiones.
@@ -29,13 +28,8 @@ Contiene los siguientes metodos :
 
     T : (E) | F(E) | variable | bool | int
 
-    El metodo ParseExpression trabaja con dos parametros, parentPrecedence y father
-
     parentPrecedence : almacena la precedencia de la expresion anterior, para compararla con la actual y saber cual expresion se debe parsear primero.
     Por ejemplo :  x + 2 * 7  ==> como la precedencia de "*" es mayor que la de "+" se parsea de la forma : x + (2 * 7)
-
-    father : almacena la funcion que contiene a la expresion actual, para que las variables que aparezcan sepan en que ambito se encuentran declaradas
-    Suc(x) => x + 2  ; sin eso "x" no sabria donde buscar su valor cuando se ejecuta la expresion "x + 2"
 */
 
 public class Parser
@@ -80,8 +74,12 @@ public class Parser
 
     private SyntaxToken MatchKind(SyntaxKind kind)
     {
+        Console.WriteLine("{0} : {1}",kind , Current._kind);
         if(Current._kind == kind)
             return NextToken();
+
+        if(kind == SyntaxKind.EqualToken)
+            Console.WriteLine("{0} : {1}" , Current._kind , kind);
         
         CompilatorTools.Bugs.Add($"<Syntactic Error> : Received {Current._kind} while expecting {kind} ") ;
         return new SyntaxToken(kind , Current._position , null , null);
@@ -119,9 +117,11 @@ public class Parser
                 EndToken = MatchKind(SyntaxKind.EOLToken); 
             }
             Roots.Add(expression);
+            if(CompilatorTools.Bugs.Count != 0)
+                break ;
         }
 
-        return new SyntaxTree(CompilatorTools.Bugs , Roots.ToArray() , MatchKind(SyntaxKind.EOFToken)) ;
+        return new SyntaxTree( Roots.ToArray() , MatchKind(SyntaxKind.EOFToken)) ;
     }
 
     private SyntaxExpression ParseExpression(int parentPrecedence = 0)
@@ -250,6 +250,15 @@ public class Parser
             {
                 string varName = MatchKind(SyntaxKind.IdentifierToken)._text ;
                 MatchKind(SyntaxKind.EqualToken);
+
+                if(CompilatorTools.Bugs.Count != 0)
+                {
+                    while(Current._kind != SyntaxKind.EOFToken)
+                    {
+                        NextToken();
+                    }
+                    return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
+                }
                 var expression = ParseExpression();
                 asigments.Add(varName,expression) ;
                 
@@ -273,7 +282,7 @@ public class Parser
     {
         NextToken(); // saltando el if
         MatchKind(SyntaxKind.OpenParenthesisToken);
-    
+
         SyntaxExpression condition = ParseExpression();
         
         NextToken();

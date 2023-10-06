@@ -81,6 +81,6 @@ public class SyntaxToken
         _kind = kind ;
         _position = position ;
         _text = text ;
-        _value = value ;
+        _value = value ;             
     }
 }

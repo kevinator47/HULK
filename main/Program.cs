@@ -1,7 +1,7 @@
 ﻿namespace HULK ;
 
 /* Punto de Entrada del Programa
-
+Carga las funciones predefinidas
 Recibe el string ingresado por el usuario que representa la linea de codigo HULK.
 Pasa dicha linea como argumento al Parser(este a su vez llama al Lexer) para convertir el string en expresiones del lenguaje HULK
 Si no hubo ningun problema con la gramatica o la semantica ejecuta el programa
@@ -10,13 +10,13 @@ Estos pasos se repiten hasta que el usuario ingrese una linea vacia
 
 Tiene colorcitos(verde para el programa normalmente y rojo para mostrar los errores)
 
-Ideas : Cambiar campo Value de VariableExpression a una expresion y para obtener el valor solo hay que evaluar dicha expresion.
 */
 
 class Program
 {
     static void Main()
     {
+        Console.Clear();
         FunctionPool.LoadPredefinedFunctions();
         while (true)
         {
@@ -39,10 +39,10 @@ class Program
             var tree = parser.Parse();
             
             // Revisa si se encontro algun bug durante la compilacion.
-            if(tree._bugs.Any())   
+            if(CompilatorTools.Bugs.Any())   
             {
                 Console.ForegroundColor = ConsoleColor.DarkRed ;
-                foreach (string bug in tree._bugs)
+                foreach (string bug in CompilatorTools.Bugs)
                 {
                     Console.WriteLine(bug);
                 }

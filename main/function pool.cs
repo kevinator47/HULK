@@ -8,14 +8,14 @@ namespace HULK ;
 
 public class FunctionPool
 {
-    public static List<ScopedExpression> FunctionList = new List<ScopedExpression>();
+    public static List<FunctionExpression> FunctionList = new List<FunctionExpression>();
 
     public static bool CheckIfExist(DeclaredFunctionExpression newfunction)
     {
         return FunctionList.Any(func => func.Equals(newfunction)) ;
     }
 
-    public static ScopedExpression Find(string name , int counter)
+    public static FunctionExpression Find(string name , int counter)
     {
         return FunctionList.FirstOrDefault(func => func.Name == name && func.Len == counter );
     }
@@ -28,11 +28,5 @@ public class FunctionPool
         {
             FunctionList.Add(new PredefinedFunctionExpreesion(nm, 1) );
         }
-
-        foreach (var item in FunctionList)
-        {
-            Console.WriteLine("{0} : {1}" , item.Name , item.Len);
-        }
-        Console.WriteLine(FunctionList.Count);
     }
 }

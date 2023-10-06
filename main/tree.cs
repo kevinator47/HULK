@@ -15,7 +15,7 @@ Existen los siguientes tipos de Nodos :
 
 . ParenthesizedExpression    :  Contiene una expresion(Expression) dentro de dos parentesis.
 
-. ScopedExpression(abstract) :  Clase para agrupar todas las expresiones que tienen Scope (funciones, let-in , if-else)
+. FunctionExpression(abstract) :  Clase para agrupar todas las funciones(predefinidas y declaradas)
 
 */
 
@@ -26,11 +26,10 @@ public sealed class SyntaxTree{
     public SyntaxToken EOF ;
     public List<string> _bugs ;
 
-    public SyntaxTree(List<string> diagnostic , SyntaxExpression[] roots , SyntaxToken eofileToken)
+    public SyntaxTree(SyntaxExpression[] roots , SyntaxToken eofileToken)
     {
         Roots = roots ;
-        EOF = eofileToken ;
-        _bugs = diagnostic ; 
+        EOF = eofileToken ; 
     }
 }
 public abstract class Node{
@@ -140,7 +139,7 @@ public sealed class BinaryOperatorExpression : SyntaxExpression{
     {
         switch (OperatorToken._kind)
         {
-            // Operadores Aritmeticos(- , + , * , /) se ejecutan sobre valores numericos.
+            // Operadores(- , + , * , / , > , ^ , % , > , < , <= , >=) se ejecutan sobre valores numericos.
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
             case(SyntaxKind.StarToken):
@@ -272,10 +271,10 @@ public sealed class VariableExpression : SyntaxExpression{
         Name = name ;
     }
 
-    public override object Evaluate(Dictionary<string, object> symbolTable)
+    public override object Evaluate(Dictionary<string, object> symbolTable = null)
     {
         // Chequeando si existe la variable en el scope actual
-        if(symbolTable.ContainsKey(Name))
+        if( symbolTable != null && symbolTable.ContainsKey(Name))
             return symbolTable[Name];
         
         CompilatorTools.Bugs.Add($"<RuntimeError> : Variable {Name} does not exist in current context.");
@@ -314,7 +313,7 @@ public sealed class IfExpression : SyntaxExpression{
     } 
 
 }
-public abstract class ScopedExpression : SyntaxExpression{
+public abstract class FunctionExpression : SyntaxExpression{
     public string Name ;
     public List<string> Args ;
     public SyntaxExpression Body ;
@@ -326,7 +325,7 @@ public abstract class ScopedExpression : SyntaxExpression{
     }
     
 
-public sealed class DeclaredFunctionExpression: ScopedExpression{
+public sealed class DeclaredFunctionExpression: FunctionExpression{
 
     public override SyntaxKind Kind {get;set;}
 
@@ -346,7 +345,7 @@ public sealed class DeclaredFunctionExpression: ScopedExpression{
         {
             return false ;
         }
-        var other = (ScopedExpression)obj ;
+        var other = (FunctionExpression)obj ;
 
         return (Name == other.Name && Len == other.Len) ;
     }
@@ -377,7 +376,7 @@ public sealed class DeclaredFunctionExpression: ScopedExpression{
     }
 }
 
-public sealed class PredefinedFunctionExpreesion : ScopedExpression{
+public sealed class PredefinedFunctionExpreesion : FunctionExpression{
     public override SyntaxKind Kind {get;set;}
     
 

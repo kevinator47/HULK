@@ -1,13 +1,11 @@
-﻿using System.ComponentModel;
-using System.Text;
+﻿using System.Text;
 namespace HULK ;
 
 /* Lexer
 Es la parte del programa encargada de recibir una cadena de caracteres e identificar los distintos tokens que conforman el lenguaje de HULK
 
 Es capaz de reconocer los siguientes Tokens :
-.NumberLiteral Token
-.StringLiteral Token (no implementado aun)
+.Literales (string , number , boolean)
 .WhiteSpace Token
 .Identifier Token
 .Keyword Token
@@ -33,7 +31,7 @@ Ejemplo :
 if(a <= b then "menor" else "mayor")
 |if| |(| |a| |<=| |b| |then| |"menor"| |else| |"mayor| |)|
 
-Poner las instrucciones de completar los tokens en funciones aparte 
+Cada tipo de token tiene su metodo Complete.
 */
 
 public class Lexer
@@ -54,7 +52,6 @@ public class Lexer
     public Lexer(string codeline)
     {
         _text = codeline ;
-        _position = 0 ; // ??
     }
 
     private char Peek(int distance)
@@ -70,202 +67,307 @@ public class Lexer
 
     public SyntaxToken GetToken()
     {
+        // Propiedades que caracterizan a los tokens
+        int start = _position ;  
+        SyntaxKind kind       ;
+        string text           ;
+        object value          ;
+
         // End of Line tokens
         if(Current == ';')
             return new SyntaxToken(SyntaxKind.EOLToken , _position++ , ";", null);
 
         // End Of File tokens
-        if(_position >= _text.Length)
+        else if(_position >= _text.Length)
             return new SyntaxToken(SyntaxKind.EOFToken , _position , "\0", null) ;
-        
+
         // Number Token
-        if(char.IsDigit(Current))
+        else if(char.IsDigit(Current))
         {
-            int start = _position ;   // para poder recuperar mas tarde todo el token
-
-            bool IsDecimal = false ; 
-            
-            // Sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
-            while(char.IsDigit(Current) || (Current == '.' && ! IsDecimal) )
-            {
-                if(Current == '.')
-                    IsDecimal = true ;
-                _position ++ ;
-            }
-
-            int length = _position - start ;
-            string text = _text.Substring(start , length ) ;
-            
-            if(!double.TryParse(text , out double value))
-                CompilatorTools.Bugs.Add($"<Lexical Error>: {text} cannot be represented by type Number.");
-                
-            return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value) ;
+            CompleteNumberLiteral(out kind , out text , out value , start);
         }
 
         // String Literals
-        if(Current == '"')
+        else if(Current == '"')
         {
-            int start = _position ++ ;
-
-            var sb = new StringBuilder();
-            bool done = false ;
-
-            while(!done)
-            {
-                switch (Current)
-                {
-                    case '\0' :
-                        CompilatorTools.Bugs.Add($"<Lexical Error> : Unterminated string literal");
-                        done = true ;
-                        break ;
-                    
-                    case '"' :
-                        done = true ;
-                        _position ++ ;
-                        break ;
-                    
-                    default:
-                        sb.Append(Current) ;
-                        _position ++ ;
-                        break ;
-                }
-            }
-            
-            string value = sb.ToString();
-            string text = "\"" + value + "\"" ;
-
-            return new SyntaxToken(SyntaxKind.LiteralToken , start , text , value);
+            start = _position ++ ;
+            CompleteStringLiteral(out kind , out text , out value , start) ;
         }
 
         // WhiteSpace Token
-        if(char.IsWhiteSpace(Current))
+        else if(char.IsWhiteSpace(Current))
         {
-            int start = _position ;   
+            CompleteWhiteSpace(out kind , out text , out value , start);
+        }
+        // KeyWords and Identifiers
+        else if(char.IsLetter(Current) || Current == '_')
+        {
+            CompleteKWAndIdentifiers(out kind , out text , out value , start) ;
+        }
 
-            while(char.IsWhiteSpace(Current)  )
+        // Operadores
+        else
+        {
+            CompleteOperators(out kind , out text , out value , out start);
+        }
+        return new SyntaxToken(kind, start , text , value);
+        
+    }
+
+
+    private void CompleteNumberLiteral(out SyntaxKind kind , out string text , out object value , int start)
+    {
+        kind = SyntaxKind.LiteralToken ;
+        bool IsDecimal = false ; 
+            
+        //Sigue leyendo caracteres hasta que se encuentra uno que no sea un digito
+        while(char.IsDigit(Current) || (Current == '.' && ! IsDecimal) )
+        {
+            if(Current == '.')
+                IsDecimal = true ;
+            
+            _position ++ ;
+        }
+
+        int length = _position - start ;
+        text = _text.Substring(start , length ) ;
+            
+        if(!double.TryParse(text , out double dbvalue))
+            CompilatorTools.Bugs.Add($"<Lexical Error>: {text} cannot be represented by type Number.");
+        
+        value = dbvalue ;
+    }
+
+    private void CompleteStringLiteral(out SyntaxKind kind , out string text , out object value , int start)
+    {
+        kind = SyntaxKind.LiteralToken ;
+        
+        var sb = new StringBuilder();
+        var done = false ;
+
+        while(!done)
+        {
+            switch (Current)
+            {
+                case '\0' :
+                    CompilatorTools.Bugs.Add($"<Lexical Error> : Unterminated string literal");
+                    done = true ;
+                    break ;
+                    
+                case '"' :
+                    done = true ;
+                    _position ++ ;
+                    break ;
+                    
+                default:
+                    sb.Append(Current) ;
+                    _position ++ ;
+                    break ;
+            }
+        }    
+        value = sb.ToString();
+        text = "\"" + value + "\"" ;
+    }
+
+    private void CompleteWhiteSpace(out SyntaxKind kind , out string text , out object value , int start)
+    {
+        kind = SyntaxKind.WhiteSpaceToken ;
+
+        while(char.IsWhiteSpace(Current)  )
             {
                 _position ++ ;
             }
 
             int length = _position - start ;
-            string text = _text.Substring(start , length ) ;
+            text = _text.Substring(start , length ) ;
+            value = null ;
+    }
+    private void CompleteKWAndIdentifiers(out SyntaxKind kind , out string text , out object value , int start)
+    {
 
-            return new SyntaxToken(SyntaxKind.WhiteSpaceToken , start , text , null) ;
-        }
-
-        // Keywords && Identifiers
-        if(char.IsLetter(Current) || Current == '_')
-        {
-            int start = _position ;
-            
             while (char.IsLetterOrDigit(Current) || Current == '_')
             {
                 _position ++ ;
             }
             
             int length = _position - start ;
-            string text = _text.Substring(start , length);
+            text = _text.Substring(start , length);
             
-            var kind = CompilatorTools.GetKwKind(text);
-            var value = CompilatorTools.GetKwValue(kind); 
-
-            return new SyntaxToken(kind , start , text  , value);
-
-        }
-
-        // Operadores
+            kind = CompilatorTools.GetKwKind(text);
+            value = CompilatorTools.GetKwValue(kind);
+        
+    }
+    private void CompleteOperators(out SyntaxKind kind , out string text , out object value , out int start)
+    {
+        value = null ;
         switch (Current)
         {
             case('+'):
-                return new SyntaxToken(SyntaxKind.PlusSignToken , _position++ , "+" , null) ;
+                kind =  SyntaxKind.PlusSignToken ;
+                start = _position++ ;
+                text = "+" ;
+                break ;
             
             case('-'):
-                return new SyntaxToken(SyntaxKind.MinusToken , _position++ , "-", null) ;
-            
+                kind =  SyntaxKind.MinusToken ;
+                start = _position++ ;
+                text = "-" ;
+                break ;
+
             case('*'):
-                return new SyntaxToken(SyntaxKind.StarToken , _position++ , "*", null) ;
-            
+                kind =  SyntaxKind.StarToken ;
+                start = _position++ ;
+                text = "*" ;
+                break ;
+
             case('/'):
-                return new SyntaxToken(SyntaxKind.SlashToken , _position++ , "/", null) ;
-            
+                kind =  SyntaxKind.SlashToken ;
+                start = _position++ ;
+                text = "/" ;
+                break ;
+
             case('^') :
-                return new SyntaxToken(SyntaxKind.ExponentToken, _position++ , "^", null);
-            
+                kind =  SyntaxKind.ExponentToken ;
+                start = _position++ ;
+                text = "^" ;
+                break ;
+
             case('%'):
-                return new SyntaxToken(SyntaxKind.PercentageToken , _position++ , "%" , null);
+                kind =  SyntaxKind.PercentageToken ;
+                start = _position++ ;
+                text = "%" ;
+                break ;
 
             case('@'):
-               return new SyntaxToken(SyntaxKind.ArrobaToken , _position++ , "%" , null);
-
+                kind =  SyntaxKind.ArrobaToken ;
+                start = _position++ ;
+                text = "@" ;
+                break ;
 
             case('('):
-                return new SyntaxToken(SyntaxKind.OpenParenthesisToken , _position++ , "(", null) ;
-            
+                kind =  SyntaxKind.OpenParenthesisToken ;
+                start = _position++ ;
+                text = "(" ;
+                break ;
+
             case(')'):
-                return new SyntaxToken(SyntaxKind.CloseParenthesisToken , _position++ , ")", null) ;
+                kind =  SyntaxKind.CloseParenthesisToken ;
+                start = _position++ ;
+                text = ")" ;
+                break ;
 
             case(','):
-                return new SyntaxToken(SyntaxKind.CommaSeparatorToken , _position++ , "," , null);
-            
+                kind =  SyntaxKind.CommaSeparatorToken ;
+                start = _position++ ;
+                text = "," ;
+                break ;
+
             case('!'):
                 if(Peek(1) == '=')
                 {
-                    return new SyntaxToken(SyntaxKind.NotEqualToken , _position += 2 , "!=" , null);    
+                    kind =  SyntaxKind.NotEqualToken ;
+                    start = _position += 2 ;
+                    text = "!=" ;
                 }
-                return new SyntaxToken(SyntaxKind.NotToken , _position++ , "!" , null);
-                
+                else
+                {
+                    kind =  SyntaxKind.NotToken ;
+                    start = _position++ ;
+                    text = "!" ;
+                }
+                break ;
             
             case('&'):
                 if(Peek(1) == '&')
                 {
-                    return new SyntaxToken(SyntaxKind.DobleAndToken , _position += 2 , "&&" , null);    
+                    kind =  SyntaxKind.DobleAndToken ;
+                    start = _position += 2 ;
+                    text = "&&" ;
                 }
-                return new SyntaxToken(SyntaxKind.AndToken , _position++ , "&" , null);
-                            
+                else
+                {
+                    kind =  SyntaxKind.AndToken ;
+                    start = _position++ ;
+                    text = "&" ;
+                }
+                break ;
+
             case('|'):
                 if(Peek(1) == '|')
                 {
-                    return new SyntaxToken(SyntaxKind.DobleOrToken , _position += 2 , "||" , null);    
+                    kind =  SyntaxKind.DobleOrToken ;
+                    start = _position += 2 ;
+                    text = "||" ;
                 }
-                return new SyntaxToken(SyntaxKind.OrToken , _position++ , "|" , null);
-                
+                else
+                {
+                    kind =  SyntaxKind.OrToken ;
+                    start = _position++ ;
+                    text = "|" ;
+                }
+                break ;
+
             case('='):
                 switch(Peek(1))
                 {
                     case('='):
-                        return new SyntaxToken(SyntaxKind.EqualEqualToken , _position += 2 , "==" , null);
+                        kind =  SyntaxKind.EqualEqualToken ;
+                        start = _position += 2 ;
+                        text = "==" ;
+                        break ;
                     
                     case('>'):
-                        return new SyntaxToken(SyntaxKind.ArrowToken , _position += 2 , "=>" , null);
-
+                        kind =  SyntaxKind.ArrowToken ;
+                        start = _position += 2 ;
+                        text = "=>" ;
+                        break ;
                     default:
-                        return new SyntaxToken(SyntaxKind.EqualToken , _position++ , "=" , null);                    
-                        
+                        kind =  SyntaxKind.EqualToken ;
+                        start = _position ++ ;
+                        text = "=" ;
+                        break ;
                 }
+            break ;
             
             case('<') :
                 switch (Peek(1))
                 {
                     case('='):
-                    return new SyntaxToken(SyntaxKind.LessOrEqualToken , _position += 2 , "<=" , null);
-                
+                        kind =  SyntaxKind.LessOrEqualToken ;
+                        start = _position +=2 ;
+                        text = "<=" ;
+                        break ;
+                    
                     default:
-                        return new SyntaxToken(SyntaxKind.LessToken , _position++ , "<" , null);
-                }
+                        kind =  SyntaxKind.LessToken ;
+                        start = _position++ ;
+                        text = "<" ;
+                        break ;
+               }
+            break ;
             
             case('>') :
                 switch (Peek(1))
                 {
                     case('='):
-                        return new SyntaxToken(SyntaxKind.MoreOrEqualToken , _position += 2 , ">=" , null);
-                
+                        kind =  SyntaxKind.MoreOrEqualToken ;
+                        start = _position += 2 ;
+                        text = ">=" ;
+                        break ;
+                    
                     default:
-                        return new SyntaxToken(SyntaxKind.MoreToken , _position++ , ">" , null);
+                    kind =  SyntaxKind.MoreToken ;
+                    start = _position++ ;
+                    text = ">" ;
+                    break ;
                 }
+            break ;
                 
             default:  // Tokens Incorrectos
-                CompilatorTools.Bugs.Add($"<LexicalError> : unexpected character \"{Current}\"") ;
-                return new SyntaxToken(SyntaxKind.BadToken , _position ++ , _text.Substring(_position - 1 , 1), null) ;
+            kind =  SyntaxKind.BadToken ;
+            text = _text.Substring(_position , 1) ;
+            start = _position ++ ;
+            break ;
         }
     }
 }
