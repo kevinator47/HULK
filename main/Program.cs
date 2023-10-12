@@ -1,4 +1,7 @@
-﻿namespace HULK ;
+﻿using System.Diagnostics;
+namespace HULK ;
+using System ;
+using System.Diagnostics ;
 
 /* Punto de Entrada del Programa
 Carga las funciones predefinidas
@@ -14,10 +17,11 @@ Tiene colorcitos(verde para el programa normalmente y rojo para mostrar los erro
 
 class Program
 {
-    static void Main()
+    static void Main(string[] args)
     {
         Console.Clear();
         FunctionPool.LoadPredefinedFunctions();
+        var crono = new Stopwatch();
         while (true)
         {
             Console.ForegroundColor = ConsoleColor.Green ;
@@ -25,6 +29,7 @@ class Program
 
             Console.Write("> ") ;
             string line = Console.ReadLine();
+            crono.Start();
 
             if(string.IsNullOrWhiteSpace(line))
                 return ;
@@ -32,7 +37,20 @@ class Program
             if(line == "#clear")
             {
                 Console.Clear();
+                crono.Stop();
                 continue ;
+            }
+
+            if(line == "#functions")
+            {
+                Console.ForegroundColor = ConsoleColor.Gray ;
+                FunctionPool.ShowFunctions();
+                
+                crono.Stop();
+                Console.ForegroundColor = ConsoleColor.Yellow ;
+                Console.WriteLine("~ Execution time : {0} ms ~" , crono.ElapsedMilliseconds);
+                
+                continue;
             }
             
             var parser = new Parser(line) ;
@@ -42,13 +60,8 @@ class Program
             if(CompilatorTools.Bugs.Any())   
             {
                 Console.ForegroundColor = ConsoleColor.DarkRed ;
-                foreach (string bug in CompilatorTools.Bugs)
-                {
-                    Console.WriteLine(bug);
-                }
-                
+                Console.WriteLine(CompilatorTools.Bugs[0]);
                 Console.ForegroundColor = ConsoleColor.Green ;
-                
             }
             
             // Si no se encontro ninguno , se ejecuta el programa.
@@ -62,10 +75,7 @@ class Program
                     if(CompilatorTools.Bugs.Any())
                     {
                         Console.ForegroundColor = ConsoleColor.DarkRed ;
-                        foreach (string bug in CompilatorTools.Bugs)
-                        {
-                            Console.WriteLine(bug);
-                        }
+                        Console.WriteLine(CompilatorTools.Bugs[0]);
                 
                         Console.ForegroundColor = ConsoleColor.Green ;
                         break ;
@@ -74,11 +84,16 @@ class Program
                     else
                     {
                         if(result != null)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Blue ;
                             Console.WriteLine(result);
+                        }        
                     }
                 }
            }
-
+           crono.Stop();
+           Console.ForegroundColor = ConsoleColor.Yellow ;
+           Console.WriteLine("~ Execution time : {0} ms ~" , crono.ElapsedMilliseconds);
         }
     }
 }

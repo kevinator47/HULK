@@ -1,5 +1,6 @@
-﻿namespace HULK ;
-
+﻿using System;
+using System.Collections.Generic;
+namespace HULK ;
 
 public class CompilatorTools
 {
@@ -13,8 +14,11 @@ public class CompilatorTools
         {"else" , SyntaxKind.ElseKwToken} , 
         {"true" , SyntaxKind.TrueToken} ,
         {"false" , SyntaxKind.FalseToken} ,
-        {"function" , SyntaxKind.FunctionKwToken}
+        {"function" , SyntaxKind.FunctionKwToken},
+        {"PI" , SyntaxKind.PIKwToken}
     };
+
+    public static Dictionary<string , int> FunctionsDepth = new Dictionary<string, int>();
 
     public static List<string> Bugs;
 
@@ -31,10 +35,16 @@ public class CompilatorTools
 
     public static object GetKwValue(SyntaxKind Kind)
     {
-        if(Kind == SyntaxKind.TrueToken || Kind == SyntaxKind.FalseToken)
-            return Kind == SyntaxKind.TrueToken ; 
-        
-        return null ;
+        switch(Kind)
+        {
+            case(SyntaxKind.TrueToken):
+            case(SyntaxKind.FalseToken):
+                return Kind == SyntaxKind.TrueToken ;
+            case(SyntaxKind.PIKwToken) :
+                return Math.PI;
+            default :
+                return null ;
+        }        
     }
     public static int GetBinaryOpPrecedence(SyntaxKind kind)
     {
@@ -42,28 +52,30 @@ public class CompilatorTools
         switch (kind)
         {
             case(SyntaxKind.ExponentToken):
+                return 5 ;
+            
+            case(SyntaxKind.StarToken):
+            case(SyntaxKind.SlashToken):
+                return 4 ;
+            
+            case(SyntaxKind.PlusSignToken):
+            case(SyntaxKind.MinusToken):
+            case(SyntaxKind.ArrobaToken):
+            case(SyntaxKind.PercentageToken):
+                return 3 ;
+
             case(SyntaxKind.NotEqualToken):
             case(SyntaxKind.EqualEqualToken):
             case(SyntaxKind.MoreOrEqualToken):
             case(SyntaxKind.LessOrEqualToken):
             case(SyntaxKind.LessToken):
             case(SyntaxKind.MoreToken):
+                return 2 ;
             
-                return 3 ;
-
-            case(SyntaxKind.StarToken):
-            case(SyntaxKind.SlashToken):
             case(SyntaxKind.AndToken):
             case(SyntaxKind.OrToken):
             case(SyntaxKind.DobleAndToken):
             case(SyntaxKind.DobleOrToken):
-            case(SyntaxKind.PercentageToken):
-                return 2 ;
-
-            case(SyntaxKind.PlusSignToken):
-            case(SyntaxKind.MinusToken):
-            case(SyntaxKind.ArrobaToken):
-            
                 return 1 ;
 
             default:
@@ -78,11 +90,39 @@ public class CompilatorTools
             case(SyntaxKind.PlusSignToken):
             case(SyntaxKind.MinusToken):
             case(SyntaxKind.NotToken):
-                return 4 ;
+                return 6 ;
 
             default:
                 return 0 ;
         }
+    }
+
+    public static void AddFunctionCallCount(string name)
+    {
+        if(FunctionsDepth.ContainsKey(name))
+        {
+            FunctionsDepth[name] ++ ;
+        }
+
+        else
+        {
+            FunctionsDepth.Add(name , 1);
+        }
+    }
+
+    public static void DecreaseFunctionCallCount(string name)
+    {
+        if(FunctionsDepth.ContainsKey(name))
+        {
+            FunctionsDepth[name] -- ;
+        }
+    }
+
+    public static int GetFunctionDepth(string name)
+    {   
+        if(FunctionsDepth.ContainsKey(name))
+            return FunctionsDepth[name] ;
+        return 0 ;
     }
 }
 

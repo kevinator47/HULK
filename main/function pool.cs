@@ -29,4 +29,11 @@ public class FunctionPool
             FunctionList.Add(new PredefinedFunctionExpreesion(nm, 1) );
         }
     }
+    public static void ShowFunctions()
+    {
+        foreach(var f in FunctionList)
+        {
+            Console.WriteLine($"{f.Name} : takes {f.Len} argument(s).");
+        }
+    }
 }

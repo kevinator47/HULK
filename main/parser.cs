@@ -9,8 +9,7 @@ Contiene las siguientes propiedades :
     _tokens   :  un array que representa el grupo de tokens.
     _position :  para ir moviendose entre los tokens. 
     Current   :  se refiere al token actual.
-    CompilatorTools.Bugs     :  una lista para almacenar los errores que se encuentren.
-
+    
 Contiene los siguientes metodos :
     constructor       :  Ejecuta el Lexer obteniendo una lista de tokens. 
     Peek(n)           :  Permite mirar el token que se encuentra a una distancia "n" del actual.
@@ -74,15 +73,28 @@ public class Parser
 
     private SyntaxToken MatchKind(SyntaxKind kind)
     {
-        Console.WriteLine("{0} : {1}",kind , Current._kind);
+
         if(Current._kind == kind)
             return NextToken();
-
-        if(kind == SyntaxKind.EqualToken)
-            Console.WriteLine("{0} : {1}" , Current._kind , kind);
         
-        CompilatorTools.Bugs.Add($"<Syntactic Error> : Received {Current._kind} while expecting {kind} ") ;
+        
+        if(kind == SyntaxKind.LiteralToken)
+            CompilatorTools.Bugs.Add($"<Syntactic Error> : Received {Current._kind} while expecting Expression ") ;    
+        
+        else
+            CompilatorTools.Bugs.Add($"<Syntactic Error> : Received {Current._kind} while expecting {kind} ") ;
+        
         return new SyntaxToken(kind , Current._position , null , null);
+    }
+
+    private bool ErrorHasOcurred => CompilatorTools.Bugs.Count != 0 ;
+
+    private void GetToRecoveryPoint()
+    {
+        while(Current._kind != SyntaxKind.EOLToken && Current._kind != SyntaxKind.EOFToken)
+        {
+            NextToken();
+        }
     }
     public SyntaxTree Parse()
     {
@@ -117,8 +129,13 @@ public class Parser
                 EndToken = MatchKind(SyntaxKind.EOLToken); 
             }
             Roots.Add(expression);
-            if(CompilatorTools.Bugs.Count != 0)
-                break ;
+            
+            if(ErrorHasOcurred)
+            {
+                GetToRecoveryPoint();
+                return new SyntaxTree(null , null);
+            }
+           
         }
 
         return new SyntaxTree( Roots.ToArray() , MatchKind(SyntaxKind.EOFToken)) ;
@@ -126,6 +143,12 @@ public class Parser
 
     private SyntaxExpression ParseExpression(int parentPrecedence = 0)
     {
+        if(ErrorHasOcurred)
+        {
+            GetToRecoveryPoint();
+            return null ;
+        }
+
         SyntaxExpression left ;
         int unaryprecedence = CompilatorTools.GetUnaryOpPrecedence(Current._kind) ;
 
@@ -136,7 +159,7 @@ public class Parser
             left = new UnaryOperatorExpression(operatorToken , operand) ;
         }
         else
-        {
+        {    
             left = ParseTerm();
         }
 
@@ -146,7 +169,7 @@ public class Parser
 
             // Si no se puede ejecutar el operador o el operador anterior tiene mayor precedencia no se hace nada(se parseara el otro primero).
             if(precedence == 0 || precedence <= parentPrecedence)
-            { 
+            {
                 break ;  
             }
 
@@ -160,6 +183,11 @@ public class Parser
 
     private SyntaxExpression ParseTerm()
     {
+        if(ErrorHasOcurred)
+        {
+            GetToRecoveryPoint();
+            return null ;
+        }
         switch(Current._kind)
         {
             // Expresiones entre parentesis
@@ -185,13 +213,37 @@ public class Parser
             // If Expresions
             case(SyntaxKind.IfKwToken):
                 return ParseIfExpression();
+            
+            // PI
+            case(SyntaxKind.PIKwToken):
+                return ParsePIExpression();
                 
-            // literales numericos
+            // literales numericos y string
             default :
-                return ParseNumLiteralExpression();
+                return ParseLiteralExpression();
         }
     }
 
+    private SyntaxExpression ParseLiteralExpression()
+    {
+        var litToken = MatchKind(SyntaxKind.LiteralToken) ;
+        return new LiteralExpression(litToken);
+    }
+    private SyntaxExpression ParsePIExpression()
+    {
+        var PItoken = NextToken();
+        return new LiteralExpression(PItoken);
+    }
+    private SyntaxExpression ParseBoolLiteralExpression()
+    {
+        var booltoken = NextToken();
+        return new LiteralExpression(booltoken);
+    }
+    private SyntaxExpression ParseVariableExpression()
+    {
+        string name = NextToken()._text ;
+        return new VariableExpression(name);
+    }
     private SyntaxExpression ParseParenthesizedExpression()
     {
         var open = NextToken() ;                                     
@@ -200,108 +252,58 @@ public class Parser
 
         return new ParenthesizedExpression(open, expression , close);
     }
-
-    private SyntaxExpression ParseBoolLiteralExpression()
-    {
-        var booltoken = NextToken();
-        return new LiteralExpression(booltoken);
-    }
-
-    private SyntaxExpression ParseFunctionCallExpression()
-    {
-        var name = NextToken()._text ;   // Nombre de la funcion
-        NextToken();                     // Saltando el '('
-                                
-        List<SyntaxExpression> args = new List<SyntaxExpression>() ;
-
-        while(Current._kind != SyntaxKind.CloseParenthesisToken)
-        {
-            args.Add(ParseExpression()) ;
-                        
-            if(Current._kind == SyntaxKind.EOFToken)
-            {
-                // Si se llega al final del archivo no se cerro el parentesis.
-                CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function call : {name}(...") ;
-                break ;
-            }
-                        
-            if(Current._kind != SyntaxKind.CloseParenthesisToken)
-            {   
-                // chequea que a cada argumento le siga una coma excepto el ultimo       
-                MatchKind(SyntaxKind.CommaSeparatorToken);
-            }                 
-        }
-        NextToken() ;  // Saltando el ) 
-                     
-        return new FunctionCallExpression(name , args);
-    }
-    private SyntaxExpression ParseVariableExpression()
-    {
-        string name = NextToken()._text ;
-        return new VariableExpression(name);
-    }
-    private SyntaxExpression ParseLetInExpression()
-    {
-            Dictionary<string , SyntaxExpression> asigments = new Dictionary<string, SyntaxExpression>() ;
-            
-            NextToken() ; // saltando el Let
-            
-            while(Current._kind != SyntaxKind.InKwToken)
-            {
-                string varName = MatchKind(SyntaxKind.IdentifierToken)._text ;
-                MatchKind(SyntaxKind.EqualToken);
-
-                if(CompilatorTools.Bugs.Count != 0)
-                {
-                    while(Current._kind != SyntaxKind.EOFToken)
-                    {
-                        NextToken();
-                    }
-                    return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
-                }
-                var expression = ParseExpression();
-                asigments.Add(varName,expression) ;
-                
-                if(Current._kind == SyntaxKind.InKwToken)
-                    break ;
-                if(Current._kind == SyntaxKind.EOFToken)
-                {
-                    CompilatorTools.Bugs.Add($"<Syntax Error> : Missing closing parenthesis at Let-In expression.");
-                    return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
-                }
-                MatchKind(SyntaxKind.CommaSeparatorToken);
-            }
-            NextToken() ; // saltando el 'in'
-            var body = ParseExpression();
-
-            return new LetInExpression(asigments , body);
-        
-                
-    }
     private SyntaxExpression ParseIfExpression()
     {
         NextToken(); // saltando el if
-        MatchKind(SyntaxKind.OpenParenthesisToken);
 
+        MatchKind(SyntaxKind.OpenParenthesisToken);
         SyntaxExpression condition = ParseExpression();
-        
-        NextToken();
+        MatchKind(SyntaxKind.CloseParenthesisToken);
+
         SyntaxExpression truebranch = ParseExpression();
         MatchKind(SyntaxKind.ElseKwToken);
         SyntaxExpression falsebranch = ParseExpression();
 
         return new IfExpression(condition , truebranch , falsebranch);
-
     }
-    private SyntaxExpression ParseNumLiteralExpression()
+    private SyntaxExpression ParseLetInExpression()
     {
-        var numberToken = MatchKind(SyntaxKind.LiteralToken) ;
-        return new LiteralExpression(numberToken);
+        Dictionary<string , SyntaxExpression> asigments = new Dictionary<string, SyntaxExpression>() ;
+            
+        NextToken() ; // saltando el Let
+            
+        while(Current._kind != SyntaxKind.InKwToken)
+        {
+            string varName = MatchKind(SyntaxKind.IdentifierToken)._text ;
+            MatchKind(SyntaxKind.EqualToken);
+
+            if(ErrorHasOcurred)
+            {                    
+                while(Current._kind != SyntaxKind.EOFToken)
+                {
+                    NextToken();
+                }
+                return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
+            }
+            var expression = ParseExpression();
+            asigments.Add(varName,expression) ;
+                
+            if(Current._kind == SyntaxKind.InKwToken)
+                break ;
+            if(Current._kind == SyntaxKind.EOFToken)
+            {
+                CompilatorTools.Bugs.Add($"<Syntax Error> : Missing keyword \"in\" at Let-In expression.");
+                return new LetInExpression(new Dictionary<string , SyntaxExpression> (), null);
+            }
+            MatchKind(SyntaxKind.CommaSeparatorToken);
+        }
+        NextToken() ; // saltando el 'in'
+        var body = ParseExpression();
+
+        return new LetInExpression(asigments , body);            
     }
     private SyntaxExpression ParseFunctionDeclaration()
     {
-        // function Sucesor(x) => x + 1
-
         string name = MatchKind(SyntaxKind.IdentifierToken)._text ; 
         MatchKind(SyntaxKind.OpenParenthesisToken) ;
 
@@ -320,7 +322,12 @@ public class Parser
             if(Current._kind == SyntaxKind.EOFToken) // Si se llega al final del archivo no se cerro el parentesis.
             {
                 CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function declaration : {name}(...") ;
-                break ;
+            }
+
+            if(ErrorHasOcurred)
+            {                    
+                GetToRecoveryPoint();  
+                return new DeclaredFunctionExpression(null , new List<string>() , null);
             }
         }
 
@@ -329,9 +336,40 @@ public class Parser
 
         var body = ParseExpression();
         return new DeclaredFunctionExpression(name , parameters , body) ;
+    }
+    private SyntaxExpression ParseFunctionCallExpression()
+    {
+        var name = NextToken()._text ;   // Nombre de la funcion
+        MatchKind(SyntaxKind.OpenParenthesisToken);                     
+                                
+        List<SyntaxExpression> args = new List<SyntaxExpression>() ;
+
+        while(Current._kind != SyntaxKind.CloseParenthesisToken)
+        {
+            args.Add(ParseExpression()) ;
+                       
+            if(Current._kind == SyntaxKind.EOFToken)
+            {
+                // Si se llega al final del archivo no se cerro el parentesis.
+                CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function call : {name}(...") ;
+            }
+                        
+            if(Current._kind != SyntaxKind.CloseParenthesisToken)
+            {   
+                // chequea que a cada argumento le siga una coma excepto el ultimo       
+                MatchKind(SyntaxKind.CommaSeparatorToken);
+            }
+
+            if(ErrorHasOcurred)
+            {
+                GetToRecoveryPoint();
+                return new FunctionCallExpression(null , new List<SyntaxExpression>()) ;                 
+            }
+        }
+        NextToken() ;  // Saltando el ) 
+                     
+        return new FunctionCallExpression(name , args);
     }    
-
-
 }
 
     

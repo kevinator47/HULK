@@ -57,6 +57,7 @@ public enum SyntaxKind
     FalseToken ,
     IdentifierToken ,
     FunctionKwToken,
+    PIKwToken,
 
     // Expresiones
     LiteralExpression ,

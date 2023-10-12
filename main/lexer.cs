@@ -17,8 +17,7 @@ Contiene las siguientes propiedades :
     _text     :  para almacenar la cadena de caracteres que representa el codigo HULK.
     _position :  para ir iterando sobre los caracteres.
     Current   :  una propiedad que se refiere al token actual.
-    Bugs      :  una lista para almacenar los errores encontrados.
-
+    
 Contiene los siguientes metodos :
     Peek(n)   :  permite ver el caracter que se encuentra a una distancia "n" del actual.
     GetToken():  donde se lleva a cabo el proceso de identificar y obtener los tokens
@@ -113,8 +112,6 @@ public class Lexer
         return new SyntaxToken(kind, start , text , value);
         
     }
-
-
     private void CompleteNumberLiteral(out SyntaxKind kind , out string text , out object value , int start)
     {
         kind = SyntaxKind.LiteralToken ;

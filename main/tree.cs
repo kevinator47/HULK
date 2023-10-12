@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿ using System.Collections.Generic;
 namespace HULK ;
 
 // Arbol Sintactico
@@ -22,9 +22,8 @@ Existen los siguientes tipos de Nodos :
 
 public sealed class SyntaxTree{
 
-    public SyntaxExpression[] Roots ;
-    public SyntaxToken EOF ;
-    public List<string> _bugs ;
+    public SyntaxExpression[] Roots {get ;}
+    public SyntaxToken EOF {get ;}
 
     public SyntaxTree(SyntaxExpression[] roots , SyntaxToken eofileToken)
     {
@@ -264,7 +263,6 @@ public sealed class VariableExpression : SyntaxExpression{
     public override SyntaxKind Kind {get;set;}
     public string Name ; 
     
-
     public VariableExpression(string name)
     {
         Kind = SyntaxKind.VariableExpression ;
@@ -323,8 +321,6 @@ public abstract class FunctionExpression : SyntaxExpression{
     public abstract object Execute(List<object> parameters , Dictionary<string , object> symbolTable = null);
 
     }
-    
-
 public sealed class DeclaredFunctionExpression: FunctionExpression{
 
     public override SyntaxKind Kind {get;set;}
@@ -394,6 +390,11 @@ public sealed class PredefinedFunctionExpreesion : FunctionExpression{
     public override object Execute(List<object> ArgValues , Dictionary <string , object> symbolTable = null)
     {        
         // chequeo semantico
+        if(SemanticErrors(ArgValues.ElementAt(0)))
+        {
+            CompilatorTools.Bugs.Add($"<Semantic Error> : Function \"{Name}\" cannot be called with this value-type.");
+            return null ;
+        }
         
         switch(Name)
         {
@@ -409,7 +410,69 @@ public sealed class PredefinedFunctionExpreesion : FunctionExpression{
             return null ;
         }
     }
+    private bool SemanticErrors(object value)
+    {
+        switch (Name)
+        {
+            case("sin"):
+            case("cos"):
+            case("tan"):
+                return !(value is double);
+
+            default:
+                return false ;
+        }
+    }
 }
+public sealed class FunctionCallExpression : SyntaxExpression{
+    public override SyntaxKind Kind {get;set;}
+    public string Name ;
+    public List<SyntaxExpression> Args ;
+
+    public FunctionCallExpression(string name , List<SyntaxExpression> args)
+    {
+        Kind = SyntaxKind.FunctionCallExpression ;
+        Name = name ;
+        Args = args ;
+    }
+    public override object Evaluate(Dictionary <string , object> symbolTable = null)
+    {
+        if(CompilatorTools.GetFunctionDepth(Name) > 1000)
+        {
+            CompilatorTools.Bugs.Add($"<RunTime Error> : Stack Overflow in function {Name}\nDale suave que esto es Hulk, no todos los Avengers.");
+            return null ;
+        }
+        
+        CompilatorTools.AddFunctionCallCount(Name);
+        
+        // obteniendo los valores de los parametros de la llamada
+        var argValues = new List<object>();
+        
+        foreach(var argument in Args)
+        {
+            argValues.Add(argument.Evaluate(symbolTable));
+        }
+
+        // buscando la funcion 
+        var function = FunctionPool.Find(Name , Args.Count);
+
+        if(function == null)
+        {
+            CompilatorTools.Bugs.Add($"<RuntimeError> : Function {Name} receiving {Args.Count} parameter(s) does not exist.");
+            return null ;
+        }
+
+        if(symbolTable == null)
+            symbolTable = new Dictionary<string , object>();
+
+        
+        object output = function.Execute(argValues , symbolTable);
+        CompilatorTools.DecreaseFunctionCallCount(Name);
+
+        return output ;
+    }
+}
+
 public sealed class LetInExpression : SyntaxExpression{
     public override SyntaxKind Kind {get;set;}
     public Dictionary<string , SyntaxExpression> Assigment ;
@@ -441,42 +504,6 @@ public sealed class LetInExpression : SyntaxExpression{
         return Body.Evaluate(localSymbolTable);
     }
 }
-public sealed class FunctionCallExpression : SyntaxExpression{
-    public override SyntaxKind Kind {get;set;}
-    public string Name ;
-    public List<SyntaxExpression> Args ;
 
-    public FunctionCallExpression(string name , List<SyntaxExpression> args)
-    {
-        Kind = SyntaxKind.FunctionCallExpression ;
-        Name = name ;
-        Args = args ;
-    }
-    public override object Evaluate(Dictionary <string , object> symbolTable = null)
-    {
-        // obteniendo los valores de los parametros de la llamada
-        var argValues = new List<object>();
-        
-        foreach(var argument in Args)
-        {
-            argValues.Add(argument.Evaluate(symbolTable));
-        }
-
-        // buscando la funcion 
-        var function = FunctionPool.Find(Name , Args.Count);
-
-        if(function == null)
-        {
-            CompilatorTools.Bugs.Add($"<RuntimeError> : Function {Name} receiving {Args.Count} parameter(s) does not exist.");
-            return null ;
-        }
-
-        if(symbolTable == null)
-            symbolTable = new Dictionary<string , object>();
-
-        return function.Execute(argValues , symbolTable);
-
-    }
-}
 
 
