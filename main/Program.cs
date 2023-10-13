@@ -86,7 +86,14 @@ class Program
                         if(result != null)
                         {
                             Console.ForegroundColor = ConsoleColor.Blue ;
-                            Console.WriteLine(result);
+                            if(result.ToString() == "13")
+                            {
+                                Console.WriteLine("No me vas a coger pa eso, da el sucesor de 12") ;    
+                            }
+                            else
+                            {
+                                Console.WriteLine(result);
+                            }
                         }        
                     }
                 }

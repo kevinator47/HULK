@@ -56,8 +56,28 @@ public class Parser
             }
         } while (token._kind != SyntaxKind.EOFToken) ; 
         
-        _tokens = tokens.ToArray();    
+        _tokens = tokens.ToArray();
+        CheckParenthesisBalance();    
         }
+    
+    private void CheckParenthesisBalance()
+    {
+        int counter = 0 ;
+        for(int i = 0 ; i < _tokens.Length ; i++)
+        {
+            if(_tokens[i]._kind == SyntaxKind.OpenParenthesisToken)
+                counter ++ ;
+
+            else if(_tokens[i]._kind == SyntaxKind.CloseParenthesisToken)
+            {
+                counter -- ;
+                if(counter < 0 )
+                    CompilatorTools.Bugs.Add("<Syntactic Error> : Irregular use of parenthesis");
+            }
+        }
+        if(counter != 0)
+            CompilatorTools.Bugs.Add("<Syntactic Error> : Irregular use of parenthesis");
+    }
 
     private SyntaxToken Peek(int d)
     {
@@ -319,11 +339,6 @@ public class Parser
                 MatchKind(SyntaxKind.CommaSeparatorToken) ;
             }
             
-            if(Current._kind == SyntaxKind.EOFToken) // Si se llega al final del archivo no se cerro el parentesis.
-            {
-                CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function declaration : {name}(...") ;
-            }
-
             if(ErrorHasOcurred)
             {                    
                 GetToRecoveryPoint();  
@@ -347,13 +362,7 @@ public class Parser
         while(Current._kind != SyntaxKind.CloseParenthesisToken)
         {
             args.Add(ParseExpression()) ;
-                       
-            if(Current._kind == SyntaxKind.EOFToken)
-            {
-                // Si se llega al final del archivo no se cerro el parentesis.
-                CompilatorTools.Bugs.Add($"<Syntactic Error> : Irregular use of parenthesis on function call : {name}(...") ;
-            }
-                        
+                                   
             if(Current._kind != SyntaxKind.CloseParenthesisToken)
             {   
                 // chequea que a cada argumento le siga una coma excepto el ultimo       
